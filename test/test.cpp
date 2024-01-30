@@ -300,32 +300,32 @@ void initializeCrcInstructionsTest()
 {
 	EVMInstruction i1{}; i1.opcode = EVMOpcode::LOADCONST;
 	EVMArgument const1; const1.type = 'C'; const1.data.constant = static_cast<int64_t>(10000); i1.arguments.push_back(const1);
-	EVMArgument arg1; arg1.type = 'R';  arg1.data.dataAccess.type = 'r'; arg1.data.dataAccess.accessSize = NONE; arg1.data.dataAccess.registerIndex = 14; i1.arguments.push_back(arg1);
+	EVMArgument arg1; arg1.type = 'R';  arg1.data.dataAccess.type = 'r'; arg1.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1.data.dataAccess.registerIndex = 14; i1.arguments.push_back(arg1);
 	crcInstructionsTest.push_back(i1);
 
 	EVMInstruction i2{}; i2.opcode = EVMOpcode::LOADCONST;
 	EVMArgument const2{}; const2.type = 'C'; const2.data.constant = static_cast<int64_t>(0xFFFFFFFF); i2.arguments.push_back(const2);
-	EVMArgument arg1_1{}; arg1_1.type = 'R'; arg1_1.data.dataAccess.type = 'r'; arg1_1.data.dataAccess.accessSize = NONE; arg1_1.data.dataAccess.registerIndex = 10; i2.arguments.push_back(arg1_1);
+	EVMArgument arg1_1{}; arg1_1.type = 'R'; arg1_1.data.dataAccess.type = 'r'; arg1_1.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_1.data.dataAccess.registerIndex = 10; i2.arguments.push_back(arg1_1);
 	crcInstructionsTest.push_back(i2);
 
 	EVMInstruction i3{}; i3.opcode = EVMOpcode::LOADCONST;
 	EVMArgument const3{}; const3.type = 'C'; const3.data.constant = static_cast<int64_t>(0); i3.arguments.push_back(const3);
-	EVMArgument arg1_2{}; arg1_2.type = 'R'; arg1_2.data.dataAccess.type = 'r'; arg1_2.data.dataAccess.accessSize = NONE; arg1_2.data.dataAccess.registerIndex = 11; i3.arguments.push_back(arg1_2);
+	EVMArgument arg1_2{}; arg1_2.type = 'R'; arg1_2.data.dataAccess.type = 'r'; arg1_2.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_2.data.dataAccess.registerIndex = 11; i3.arguments.push_back(arg1_2);
 	crcInstructionsTest.push_back(i3);
 
 	EVMInstruction i4{}; i4.opcode = EVMOpcode::LOADCONST;
 	EVMArgument const4{}; const4.type = 'C'; const4.data.constant = static_cast<int64_t>(0); i4.arguments.push_back(const4);
-	EVMArgument arg1_3{}; arg1_3.type = 'R'; arg1_3.data.dataAccess.type = 'r'; arg1_3.data.dataAccess.accessSize = NONE; arg1_3.data.dataAccess.registerIndex = 12; i4.arguments.push_back(arg1_3);
+	EVMArgument arg1_3{}; arg1_3.type = 'R'; arg1_3.data.dataAccess.type = 'r'; arg1_3.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_3.data.dataAccess.registerIndex = 12; i4.arguments.push_back(arg1_3);
 	crcInstructionsTest.push_back(i4);
 
 	EVMInstruction i5{}; i5.opcode = EVMOpcode::LOADCONST;
 	EVMArgument const5{}; const5.type = 'C'; const5.data.constant = static_cast<int64_t>(1); i5.arguments.push_back(const5);
-	EVMArgument arg1_4{}; arg1_4.type = 'R'; arg1_4.data.dataAccess.type = 'r'; arg1_4.data.dataAccess.accessSize = NONE; arg1_4.data.dataAccess.registerIndex = 13; i5.arguments.push_back(arg1_4);
+	EVMArgument arg1_4{}; arg1_4.type = 'R'; arg1_4.data.dataAccess.type = 'r'; arg1_4.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_4.data.dataAccess.registerIndex = 13; i5.arguments.push_back(arg1_4);
 	crcInstructionsTest.push_back(i5);
 
 	EVMInstruction i6{}; i6.opcode = EVMOpcode::LOADCONST;
 	EVMArgument const6{}; const6.type = 'C'; const6.data.constant = static_cast<int64_t>(4); i6.arguments.push_back(const6);
-	EVMArgument arg1_5{}; arg1_5.type = 'R'; arg1_5.data.dataAccess.type = 'r'; arg1_5.data.dataAccess.accessSize = NONE; arg1_5.data.dataAccess.registerIndex = 9; i6.arguments.push_back(arg1_5);
+    EVMArgument arg1_5{}; arg1_5.type = 'R'; arg1_5.data.dataAccess.type = 'r'; arg1_5.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_5.data.dataAccess.registerIndex = 9; i6.arguments.push_back(arg1_5);
 	crcInstructionsTest.push_back(i6);
 
 	EVMInstruction i7{}; i7.opcode = EVMOpcode::RET;
@@ -340,12 +340,22 @@ TEST(InstructionParsingTest1, ParsingInstruction)
 
 	initializeCrcInstructionsTest();
 	std::vector<EVMInstruction> instructions;
-	EXPECT_TRUE(disasm.parseInstructions(instructions));
+    const auto parsingInstruction = disasm.parseInstructions();
+    if (parsingInstruction.has_value())
+    {
+        instructions = parsingInstruction.value();
+    }
+	EXPECT_TRUE(parsingInstruction.has_value());
 	EXPECT_TRUE(instructions.size() > 0);
 	EXPECT_TRUE(areInstructionsEqual(instructions, crcInstructionsTest));
 
 	std::vector<std::string> sourceCodeLines{};
-	EXPECT_TRUE(disasm.convertInstructionsToSourceCode(instructions, sourceCodeLines));
+    const auto sourceCodeTransform = disasm.convertInstructionsToSourceCode(instructions);
+    if (sourceCodeTransform.has_value())
+    {
+        sourceCodeLines = sourceCodeTransform.value();
+    }
+	EXPECT_TRUE(sourceCodeTransform.has_value());
 }
 
 TEST(InstructionParsingCrcTest, Disasm)
@@ -354,10 +364,20 @@ TEST(InstructionParsingCrcTest, Disasm)
 	EVMDisasm disasm(bitStream);
 	EXPECT_EQ(disasm.getError(), EVMDisasmStatus::SUCCESS);
 	std::vector<EVMInstruction> instructions;
-	EXPECT_TRUE(disasm.parseInstructions(instructions));
+    const auto instructionParsing = disasm.parseInstructions();
+    if (instructionParsing.has_value())
+    {
+        instructions = instructionParsing.value();
+    }
+	EXPECT_TRUE(instructionParsing.has_value());
 	EXPECT_TRUE(instructions.size() > 0);
 	std::vector<std::string> sourceCodeLines{};
-	EXPECT_TRUE(disasm.convertInstructionsToSourceCode(instructions, sourceCodeLines));
+    const auto sourceCodeTransform = disasm.convertInstructionsToSourceCode(instructions);
+    if (sourceCodeTransform.has_value())
+    {
+        sourceCodeLines = sourceCodeTransform.value();
+    }
+	EXPECT_TRUE(sourceCodeTransform.has_value());
 	EXPECT_TRUE(std::equal(sourceCodeLines.begin(), sourceCodeLines.end(), crcDisasmFull.begin(), crcDisasmFull.end()));
 }
 TEST(BitStreamToVar, BitStream)

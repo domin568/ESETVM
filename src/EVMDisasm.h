@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <sstream>
+#include <optional>
 
 enum class EVMDisasmStatus
 {
@@ -40,7 +41,7 @@ enum class EVMOpcode
 	LOCK,
 	UNLOCK
 };
-enum MemoryAccessSize 
+enum class MemoryAccessSize
 {
 	NONE,
 	BYTE,
@@ -67,7 +68,7 @@ struct EVMArgument
 struct EVMInstruction
 {
 	EVMOpcode opcode;
-	uint64_t offset;
+	uint64_t offset; // in file
 	std::vector<EVMArgument> arguments;
 };
 
@@ -182,14 +183,14 @@ private:
 	};
 	EVMOpcode checkOpcode(uint8_t opcodeSize);
 	EVMOpcode getOpcode();
-	bool readArguments(std::string argumentLayout, std::vector<EVMArgument>& arguments);
+	std::optional<std::vector<EVMArgument>> readArguments(std::string argumentLayout);
 	
 	
 public:
 	EVMDisasm(std::string bitStream);
 	EVMDisasmStatus getError() const { return m_error; };
-	bool parseInstructions(std::vector<EVMInstruction>& instructions);
-	bool convertInstructionsToSourceCode(std::vector<EVMInstruction>& instructions, std::vector<std::string>& sourceCodeLines);
+	std::optional<std::vector<EVMInstruction>> parseInstructions();
+	std::optional<std::vector<std::string>> convertInstructionsToSourceCode(std::vector<EVMInstruction>& instructions);
 	std::vector<std::string> getSourceCodeLines() { return sourceCodeLines; }
 };
 

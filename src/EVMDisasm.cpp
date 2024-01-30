@@ -36,8 +36,9 @@ EVMOpcode EVMDisasm::getOpcode()
 	}
 	return EVMOpcode::UNKNOWN;
 }
-bool EVMDisasm::readArguments(std::string argumentLayout, std::vector<EVMArgument>& arguments)
+std::optional<std::vector<EVMArgument>> EVMDisasm::readArguments(std::string argumentLayout)
 {
+    std::vector<EVMArgument> arguments;
 	for (const auto& arg : argumentLayout)
 	{
 		EVMArgument argument{};
@@ -48,7 +49,7 @@ bool EVMDisasm::readArguments(std::string argumentLayout, std::vector<EVMArgumen
 			std::string accessType = m_bitStream.readBits(1);
 			if (accessType == "")
 			{
-				return false;
+				return std::nullopt;
 			}
 			std::string registerIndexStr{}; // big endian encoding
 			argument.data.dataAccess.type = 'r';
@@ -57,7 +58,7 @@ bool EVMDisasm::readArguments(std::string argumentLayout, std::vector<EVMArgumen
 				std::string memoryAccessSize = m_bitStream.readBits(2);
 				if (memoryAccessSize == "")
 				{
-					return false;
+                    return std::nullopt;
 				}
 				argument.data.dataAccess.accessSize = bitStreamToMemoryAccessSize.at(memoryAccessSize);
 				argument.data.dataAccess.type = 'd';
@@ -65,7 +66,7 @@ bool EVMDisasm::readArguments(std::string argumentLayout, std::vector<EVMArgumen
 			uint8_t registerIndex{};
 			if (!m_bitStream.readVar<uint8_t>(registerIndex, 4))
 			{
-				return false;
+				return std::nullopt;
 			}
 			argument.type = 'R';
 			argument.data.dataAccess.registerIndex = registerIndex;
@@ -75,7 +76,7 @@ bool EVMDisasm::readArguments(std::string argumentLayout, std::vector<EVMArgumen
 			int64_t constant{};
 			if (!m_bitStream.readVar<int64_t>(constant))
 			{
-				return false;
+				return std::nullopt;
 			}
 			argument.type = 'C';
 			argument.data.constant = constant;
@@ -85,7 +86,7 @@ bool EVMDisasm::readArguments(std::string argumentLayout, std::vector<EVMArgumen
 			uint32_t codeAddress{};
 			if (!m_bitStream.readVar<uint32_t>(codeAddress))
 			{
-				return false;
+				return std::nullopt;
 			}
 			argument.type = 'L';
 			argument.data.codeAddress = codeAddress;
@@ -93,10 +94,11 @@ bool EVMDisasm::readArguments(std::string argumentLayout, std::vector<EVMArgumen
 		}
 		arguments.push_back(argument);
 	}
-	return true;
+	return arguments;
 }
- bool EVMDisasm::parseInstructions(std::vector<EVMInstruction>& instructions)
+std::optional<std::vector<EVMInstruction>> EVMDisasm::parseInstructions()
 {
+    std::vector<EVMInstruction> instructions;
 	size_t streamSize = m_bitStream.getStreamSize();
 	while (m_bitStream.getStreamPosition() < streamSize)
 	{
@@ -116,26 +118,32 @@ bool EVMDisasm::readArguments(std::string argumentLayout, std::vector<EVMArgumen
 		if (opcode == EVMOpcode::UNKNOWN)
 		{
 			m_error = EVMDisasmStatus::OPCODE_PARSING_ERROR;
-			return false;
+            return std::nullopt;
 		}
 		currentInstruction.opcode = opcode;
 		std::string argumentLayout = opcodeArguments.at(opcode);
 		if (argumentLayout.length() > 0)
 		{
-			std::vector<EVMArgument> arguments; 
-			if (!readArguments(argumentLayout, arguments))
+            std::vector<EVMArgument> arguments;
+            const auto result = readArguments(argumentLayout);
+            if (result.has_value())
+            {
+                arguments = result.value();
+            }
+            else
 			{
 				m_error = EVMDisasmStatus::OPCODE_ARGUMENT_PARSING_ERROR;
-				return false;
+                return std::nullopt;
 			}
 			currentInstruction.arguments = arguments;
 		}
 		instructions.push_back(currentInstruction);
 	}
-	return true;
+	return instructions;
 }
-bool EVMDisasm::convertInstructionsToSourceCode(std::vector<EVMInstruction>& instructions, std::vector<std::string>& sourceCodeLines)
+std::optional<std::vector<std::string>> EVMDisasm::convertInstructionsToSourceCode(std::vector<EVMInstruction>& instructions)
 {
+    std::vector<std::string> sourceCodeLines;
 	for (const auto& it : instructions)
 	{
 		std::stringstream ss;
@@ -183,5 +191,5 @@ bool EVMDisasm::convertInstructionsToSourceCode(std::vector<EVMInstruction>& ins
 		}
 		sourceCodeLines.push_back(ss.str());
 	}
-	return true;
+	return sourceCodeLines;
 }

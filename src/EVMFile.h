@@ -30,20 +30,22 @@ private:
 	};
 #pragma pack()
 
-	std::ifstream m_fileHandle;
-	std::streamsize m_fileSize;
+	std::ifstream m_fileHandle {};
+	std::streamsize m_fileSize {};
 	EVMHeader m_header{};
-	EVMFileStatus m_error;
-	std::vector<uint8_t> m_codeBytes;
-	std::vector<uint8_t> m_dataBytes;
+	EVMFileStatus m_error {EVMFileStatus::SUCCESS};
+	std::vector<std::byte> m_codeBytes {};
+	std::vector<std::byte> m_dataBytes {};
 
 	bool parseFile();
 public:
+	EVMFile(){};
 	EVMFile(std::string filePath);
+	void init(std::string filePath);
 
 	EVMFileStatus getError() const { return m_error; }
-	std::vector<uint8_t> getCodeBytes() { return m_codeBytes; }
-	std::vector<uint8_t> getDataBytes() { return m_dataBytes; }
+	std::vector<std::byte> getCodeBytes() const { return m_codeBytes; }
+	std::vector<std::byte> getDataBytes() const { return m_dataBytes; }
 	uint32_t getInitialDataSize() const { return m_header.initialDataSize; }
 	uint32_t getcodeSize() const{ return m_header.codeSize; }
 	uint32_t getDataSize() const{ return m_header.dataSize; }

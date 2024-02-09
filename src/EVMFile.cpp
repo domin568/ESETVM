@@ -1,11 +1,13 @@
 #include "EVMFile.h"
 
-EVMFile::EVMFile(std::string filePath):
-	m_fileSize(0),
-	m_error(EVMFileStatus::SUCCESS)
+EVMFile::EVMFile(std::string filePath)
+{
+	init(filePath);
+}
+void EVMFile::init(std::string filePath)
 {
 	m_fileHandle.open(filePath, std::ios::binary);
-	if (!m_fileHandle.is_open()) 
+	if (!m_fileHandle.is_open())
 	{
 		m_error = EVMFileStatus::FILE_OPEN_ERROR;
 		return;
@@ -23,7 +25,6 @@ EVMFile::EVMFile(std::string filePath):
 }
 bool EVMFile::parseFile()
 {
-	// parse header
 	m_fileHandle.read(reinterpret_cast<char*>(&m_header), sizeof(m_header));
 	if (m_fileHandle.fail()) 
 	{
@@ -41,12 +42,10 @@ bool EVMFile::parseFile()
 		return false;
 	}
 
-	// read code & data bytes
-	m_codeBytes.reserve(m_header.codeSize);
-	m_dataBytes.reserve(m_header.initialDataSize);
+	m_codeBytes.resize(m_header.codeSize);
+	m_dataBytes.resize(m_header.initialDataSize);
 
-	std::istreambuf_iterator<char> fileIterator(m_fileHandle);
-	std::copy_n(fileIterator, m_header.codeSize, std::back_inserter(m_codeBytes));
+	m_fileHandle.read(reinterpret_cast<char*>(m_codeBytes.data()), m_header.codeSize);
 	if (m_fileHandle.fail())
 	{
 		m_error = EVMFileStatus::FILE_READ_ERROR;
@@ -54,11 +53,7 @@ bool EVMFile::parseFile()
 	}
 	if (m_header.initialDataSize > 0)
 	{
-		if (!m_fileHandle.seekg(1, std::ios::cur))
-		{
-			return false;
-		}
-		std::copy_n(fileIterator, m_header.initialDataSize, std::back_inserter(m_dataBytes));
+		m_fileHandle.read(reinterpret_cast<char*>(m_dataBytes.data()), m_header.initialDataSize);
 		if (m_fileHandle.fail())
 		{
 			m_error = EVMFileStatus::FILE_READ_ERROR;

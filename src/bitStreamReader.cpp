@@ -1,23 +1,22 @@
-#include "bitStreamReader.h"
+#include "BitStreamReader.h"
 
-bitStreamReader::bitStreamReader(std::string bitStream) :
-	m_bitStream(bitStream),
-	m_bitStreamPosition(0)
-{}
-std::string bitStreamReader::readBits(uint64_t count, bool movePointer)
+BitStreamReader::BitStreamReader(const std::vector<std::byte>& inputData)
 {
-	if (m_bitStreamPosition + count > m_bitStream.size())
-	{
-		return "";
-	}
-	std::string bits = m_bitStream.substr(m_bitStreamPosition, count);
-	if (movePointer)
-	{
-		m_bitStreamPosition += count;
-	}
-	return bits;
+	init(inputData);
 }
-bool bitStreamReader::seek(size_t offset, BitStreamReaderSeekStrategy strategy)
+void BitStreamReader::init(const std::vector<std::byte>& inputData)
+{
+	for (const auto& byte : inputData)
+	{
+		std::bitset<BITS_IN_BYTE> bits(static_cast<unsigned char>(byte));
+		for (int i = 7; i >= 0; --i)
+		{
+			m_bitStream.push_back(bits[i]);
+		}
+	}
+}
+
+bool BitStreamReader::seek(size_t offset, BitStreamReaderSeekStrategy strategy)
 {
 	if (strategy == BitStreamReaderSeekStrategy::CUR)
 	{
@@ -41,3 +40,17 @@ bool bitStreamReader::seek(size_t offset, BitStreamReaderSeekStrategy strategy)
 	}
 	return true;
 }
+std::optional<std::vector<bool>> BitStreamReader::readBits(size_t count, bool movePointer)
+{
+	if (m_bitStreamPosition + count > m_bitStream.size())
+	{
+		return std::nullopt;
+	}
+	std::vector<bool> bits {m_bitStream.cbegin() + m_bitStreamPosition, m_bitStream.cbegin() + m_bitStreamPosition + count};
+	if (movePointer)
+	{
+		m_bitStreamPosition += count;
+	}
+	return bits;
+}
+

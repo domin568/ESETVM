@@ -2,41 +2,80 @@
 #include "utils.h"
 #include <inttypes.h>
 #include <string>
+#include <vector>
+#include <algorithm>
+#include <bitset>
 
-enum BitStreamReaderSeekStrategy
+enum class BitStreamReaderSeekStrategy
 {
 	BEG,
 	CUR,
 	END
 };
 
-class bitStreamReader
+class BitStreamReader
 {
 private:
-	std::string m_bitStream;
-	uint64_t m_bitStreamPosition;
-public:
-	bitStreamReader(std::string bitStream);
-	std::string readBits(uint64_t count, bool movePointer = true);
-	uint64_t getStreamSize() { return m_bitStream.length(); }
-	bool seek(size_t offset, BitStreamReaderSeekStrategy strategy = BitStreamReaderSeekStrategy::CUR);
-	uint64_t getStreamPosition() const { return m_bitStreamPosition; }
+	std::vector<bool> m_bitStream {};
+	uint64_t m_bitStreamPosition {};
+	
 	template <typename T>
-	bool readVar(T& var, int overrideCountBytes = 0)
+	std::optional<T> bitStreamToVar(const std::vector<bool>& bitStream, bool bigEndian = false)
 	{
-		std::string bits{};
+		if (bitStream.size() > sizeof(T) * BITS_IN_BYTE)
+		{
+			return std::nullopt;
+		}
+		T var {};
+		for (size_t bitIndex = 0; bitIndex < bitStream.size(); bitIndex++)
+		{
+			if (bitStream.at(bitIndex) == true)
+			{
+				if (bigEndian)
+				{
+					var |= static_cast<T>(1) << (bitStream.size() - bitIndex - 1);
+				}
+				else
+				{
+					var |= static_cast<T>(1) << (bitIndex);
+				}
+			}
+		}
+		return var;
+	}
+	
+public:
+	BitStreamReader(){};
+	BitStreamReader(const std::vector<std::byte>& inputData);
+	void init(const std::vector<std::byte>& inputData);
+	bool seek(size_t offset, BitStreamReaderSeekStrategy strategy = BitStreamReaderSeekStrategy::CUR);
+	std::optional<std::vector<bool>> readBits(size_t count, bool movePointer = true);
+	uint64_t getStreamSize() { return m_bitStream.size(); }
+	uint64_t getStreamPosition() const { return m_bitStreamPosition; }
+	
+	template <typename T>
+	std::optional<T> readVar(int overrideCountBytes = 0, bool movePointer = true, bool bigEndian = false)
+	{
+		std::vector<bool> bits;
 		if (overrideCountBytes == 0)
 		{
-			bits = readBits(sizeof(var) * BITS_IN_BYTE);
+			if (const auto readBitsResult = readBits(sizeof(T) * BITS_IN_BYTE, movePointer); readBitsResult.has_value())
+			{
+				bits = readBitsResult.value();
+			}
 		}
 		else
 		{
-			bits = readBits(overrideCountBytes);
+			if (const auto readBitsResult = readBits(overrideCountBytes, movePointer); readBitsResult.has_value())
+			{
+				bits = readBitsResult.value();
+			}
 		}
-		if (!utils::bitStreamToVar(bits, var))
+		if (const auto varResult = bitStreamToVar<T>(bits, bigEndian); varResult.has_value())
 		{
-			return false;
+			return varResult.value();
 		}
-		return true;
+		return std::nullopt;
 	}
+	
 };

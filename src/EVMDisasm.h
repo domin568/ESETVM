@@ -72,51 +72,57 @@ struct EVMInstruction
 	std::vector<EVMArgument> arguments;
 };
 
+using bitSequenceInteger = uint8_t;
+
 class EVMDisasm
 {
 private:
-	bitStreamReader m_bitStream;
-	EVMDisasmStatus m_error;
+	BitStreamReader m_bitStreamReader {};
+	EVMDisasmStatus m_error {EVMDisasmStatus::SUCCESS};
 
-	std::vector<EVMInstruction> instructions{};
-	std::vector<std::string> sourceCodeLines{};
-	std::vector<uint32_t> labelOffsets{};
+	std::vector<EVMInstruction> m_instructions{};
+	std::vector<std::string> m_sourceCodeLines{};
+	std::vector<uint32_t> m_labelOffsets{};
 
 	// total 21 opcodes
-	std::vector<std::map<std::string, EVMOpcode>> opcodeBitsequences =
+	const std::vector<std::map<bitSequenceInteger, EVMOpcode>> m_opcodeBitsequences =
 	{
 		{
-			{"000",EVMOpcode::MOV},  // 2 * 3 bits
-			{"001",EVMOpcode::LOADCONST}
+			// 2 * 3 bits
+			{0b000,EVMOpcode::MOV},
+			{0b001,EVMOpcode::LOADCONST}
 		},
 		{
-			{"1100",EVMOpcode::CALL}, // 4 * 4 bits
-			{"1101",EVMOpcode::RET},
-			{"1110",EVMOpcode::LOCK},
-			{"1111",EVMOpcode::UNLOCK},
+			// 4 * 4 bits
+			{0b1100,EVMOpcode::CALL},
+			{0b1101,EVMOpcode::RET},
+			{0b1110,EVMOpcode::LOCK},
+			{0b1111,EVMOpcode::UNLOCK},
 		},
 		{
-			{"01100",EVMOpcode::COMPARE},  // 10 * 5 bits
-			{"01101",EVMOpcode::JUMP},
-			{"01110",EVMOpcode::JUMPEQUAL},
-			{"10000",EVMOpcode::READ},
-			{"10001",EVMOpcode::WRITE},
-			{"10010",EVMOpcode::CONSOLEREAD},
-			{"10011",EVMOpcode::CONSOLEWRITE},
-			{"10100",EVMOpcode::CREATETHREAD},
-			{"10101",EVMOpcode::JOINTHREAD},
-			{"10110",EVMOpcode::HLT},
-			{"10111",EVMOpcode::SLEEP},
+			// 10 * 5 bits
+			{0b01100,EVMOpcode::COMPARE},
+			{0b01101,EVMOpcode::JUMP},
+			{0b01110,EVMOpcode::JUMPEQUAL},
+			{0b10000,EVMOpcode::READ},
+			{0b10001,EVMOpcode::WRITE},
+			{0b10010,EVMOpcode::CONSOLEREAD},
+			{0b10011,EVMOpcode::CONSOLEWRITE},
+			{0b10100,EVMOpcode::CREATETHREAD},
+			{0b10101,EVMOpcode::JOINTHREAD},
+			{0b10110,EVMOpcode::HLT},
+			{0b10111,EVMOpcode::SLEEP},
 		},
 		{
-			{"010001",EVMOpcode::ADD}, // 5 * 6 bits
-			{"010010",EVMOpcode::SUB},
-			{"010011",EVMOpcode::DIV},
-			{"010100",EVMOpcode::MOD},
-			{"010101",EVMOpcode::MUL}
+			// 5 * 6 bits
+			{0b010001,EVMOpcode::ADD},
+			{0b010010,EVMOpcode::SUB},
+			{0b010011,EVMOpcode::DIV},
+			{0b010100,EVMOpcode::MOD},
+			{0b010101,EVMOpcode::MUL}
 		}
 	};
-	const std::map<EVMOpcode, std::string> opcodeArguments =
+	const std::map<EVMOpcode, std::string> m_opcodeArguments =
 	{
 		{EVMOpcode::MOV, "RR"},
 		{EVMOpcode::LOADCONST, "CR"},
@@ -141,14 +147,14 @@ private:
 		{EVMOpcode::MOD, "RRR"},
 		{EVMOpcode::MUL, "RRR"}
 	};
-	const std::map<std::string, MemoryAccessSize> bitStreamToMemoryAccessSize =
+	const std::map<bitSequenceInteger, MemoryAccessSize> m_bitStreamToMemoryAccessSize =
 	{
-		{"00", MemoryAccessSize::BYTE},
-		{"10", MemoryAccessSize::WORD},
-		{"01", MemoryAccessSize::DWORD},
-		{"11", MemoryAccessSize::QWORD}
+		{0b00, MemoryAccessSize::BYTE},
+		{0b01, MemoryAccessSize::WORD},
+		{0b10, MemoryAccessSize::DWORD},
+		{0b11, MemoryAccessSize::QWORD}
 	};
-	const std::map<EVMOpcode, std::string> opcodeToName =
+	const std::map<EVMOpcode, std::string> m_opcodeToName =
 	{
 		{EVMOpcode::UNKNOWN, "unknown"}, 
 		{EVMOpcode::MOV, "mov"},
@@ -174,7 +180,7 @@ private:
 		{EVMOpcode::MOD, "mod"},
 		{EVMOpcode::MUL, "mul"}
 	};
-	const std::map<MemoryAccessSize, std::string> memoryAccessSizeToName =
+	const std::map<MemoryAccessSize, std::string> m_memoryAccessSizeToName =
 	{
 		{MemoryAccessSize::BYTE, "byte"},
 		{MemoryAccessSize::WORD, "word"},
@@ -185,12 +191,13 @@ private:
 	EVMOpcode getOpcode();
 	std::optional<std::vector<EVMArgument>> readArguments(std::string argumentLayout);
 	
-	
 public:
-	EVMDisasm(std::string bitStream);
+	EVMDisasm(){};
+	EVMDisasm(const std::vector<std::byte>& input);
+	void init(const std::vector<std::byte>& input);
 	EVMDisasmStatus getError() const { return m_error; };
 	std::optional<std::vector<EVMInstruction>> parseInstructions();
 	std::optional<std::vector<std::string>> convertInstructionsToSourceCode(std::vector<EVMInstruction>& instructions);
-	std::vector<std::string> getSourceCodeLines() { return sourceCodeLines; }
+	std::vector<std::string> getSourceCodeLines() { return m_sourceCodeLines; }
 };
 

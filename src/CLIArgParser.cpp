@@ -1,16 +1,17 @@
 #include "CLIArgParser.h"
 
-CLIArgParser::CLIArgParser(int argc, char** argv)
+CLIArgParser::CLIArgParser(int argc, const char** argv)
 {
 	std::copy(argv, argv+argc, std::back_inserter(m_args)); // assume argv is always provided by runtime
 }
 void CLIArgParser::showHelp()
 {
-	std::cout << "Usage: esetvm [-h] [-v] [-d] [-r] <input.evm> <output.easm>" << std::endl;
+	std::cout << "Usage: esetvm [-h] [-v] [-d] [-r] <input.evm> <output.easm> [-b] <file.bin>" << std::endl;
 	std::cout << "-h shows this help" << std::endl;
 	std::cout << "-v enables verbose mode" << std::endl;
 	std::cout << "-d <input.evm> <output.easm> deassembles input file and saves it to output" << std::endl;
 	std::cout << "-r <input.evm> runs .evm file" << std::endl;
+	std::cout << "-b <file.bin> passes file to program" << std::endl;
 }
 bool CLIArgParser::parseArguments ()
 {
@@ -34,8 +35,13 @@ bool CLIArgParser::parseArguments ()
 				m_inputPath = *(checkedArg + 1);
 				m_outputPath = *(checkedArg + 2);
 			}
+			else if (*checkedArg == "-b" && checkedArg + 1 != m_args.cend())
+			{
+				m_binaryFilePath = *(checkedArg + 1);
+			}
 		}
 	}
+		
 	if (!m_inputPath.empty() && !std::filesystem::exists(m_inputPath))
 	{
 		std::cerr << "Invalid input file" << std::endl;
@@ -49,6 +55,16 @@ bool CLIArgParser::parseArguments ()
 	else if (m_cliFlags.run && m_inputPath.empty())
 	{
 		std::cerr << "If you want to run evm program please provide -i <file.evm>" << std::endl;
+		return false;
+	}
+	else if ( (m_cliFlags.disassemble && (m_cliFlags.run || m_cliFlags.binaryFile)) || (m_cliFlags.binaryFile && !(m_cliFlags.disassemble) && !(m_cliFlags.run)))
+	{
+		std::cout << "Invalid arguments" << std::endl;
+		return false;
+	}
+	else if (!m_binaryFilePath.empty() && !std::filesystem::exists(m_binaryFilePath))
+	{
+		std::cerr << "Invalid binary file" << std::endl;
 		return false;
 	}
 	return true;

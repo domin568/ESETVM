@@ -2,10 +2,11 @@
 #include "EVMDisasm.h"
 #include "EVMFile.h"
 
-ESETVM::ESETVM(std::string inputPath, std::string outputPath):
+ESETVM::ESETVM(std::string inputPath, std::string outputPath, bool verbose):
 m_inputPath(inputPath),
 m_outputPath(outputPath),
-m_file(m_inputPath)
+m_file(m_inputPath),
+m_verbose(verbose)
 {}
 
 ESETVMStatus ESETVM::init()
@@ -19,7 +20,7 @@ ESETVMStatus ESETVM::init()
 	m_disasm.init(codeBytes);
 	if (const auto instructionParse = m_disasm.parseInstructions(); instructionParse.has_value())
 	{
-		m_instructions = std::move(instructionParse.value());
+		m_instructions = instructionParse.value();
 	}
 	else
 	{
@@ -28,7 +29,7 @@ ESETVMStatus ESETVM::init()
 	}
 	return ESETVMStatus::SUCCESS;
 }
-bool ESETVM::saveSourceCode(std::vector<std::string>& sourceCodeLines)
+bool ESETVM::writeSourceCode(std::vector<std::string>& sourceCodeLines)
 {
 	std::ofstream outputFile(m_outputPath);
 	outputFile << ".dataSize " << m_file.getDataSize() << std::endl;
@@ -51,26 +52,33 @@ bool ESETVM::saveSourceCode(std::vector<std::string>& sourceCodeLines)
 	outputFile.close();
 	return true;
 }
-ESETVMStatus ESETVM::disassemble()
+ESETVMStatus ESETVM::saveSourceCode()
 {
 	std::vector<std::string> sourceCodeLines{};
 	if (const auto sourceCodeConvert = m_disasm.convertInstructionsToSourceCode(m_instructions); sourceCodeConvert.has_value())
 	{
-		sourceCodeLines = std::move(sourceCodeConvert.value());
+		sourceCodeLines = sourceCodeConvert.value();
 	}
 	else
 	{
 		std::cerr << "Source code produce error" << std::endl;
 		return ESETVMStatus::PRODUCE_SOURCE_CODE_ERROR;
 	}
-	if (!saveSourceCode(sourceCodeLines))
+	if (!writeSourceCode(sourceCodeLines))
 	{
 		std::cerr << "Source code writing error" << std::endl;
 		return ESETVMStatus::SOURCE_CODE_WRITE_ERROR;
 	}
 	return ESETVMStatus::SUCCESS;
 }
-ESETVMStatus ESETVM::run()
+ESETVMStatus ESETVM::run(const std::string& binaryFile)
 {
+	std::vector<std::byte> initialDataBytes = m_file.getDataBytes();
+	EVMEmu emu {m_instructions, m_file.getDataSize(), initialDataBytes, Default_Stack_Size, m_disasm, binaryFile, m_verbose};
+	m_disasm.convertInstructionsToSourceCode(m_instructions, false);
+	if (emu.run() != EVMEmuStatus::SUCCESS)
+	{
+		return ESETVMStatus::EMULATION_ERROR;
+	}
 	return ESETVMStatus::SUCCESS;
 }

@@ -42,27 +42,28 @@ EVMOpcode EVMDisasm::getOpcode()
 	}
 	return EVMOpcode::UNKNOWN;
 }
-std::optional<std::vector<EVMArgument>> EVMDisasm::readArguments(std::string argumentLayout)
+std::optional<std::vector<EVMArgument>> EVMDisasm::readArguments(const std::vector<ArgumentType>& argumentLayout)
 {
     std::vector<EVMArgument> arguments;
 	for (const auto& arg : argumentLayout)
 	{
 		EVMArgument argument{};
-		if (arg == 'R')
+		argument.type = arg;
+		if (arg == ArgumentType::DATA_ACCESS)
 		{
 			//accessType == 0 XXXX, read XXXX as little endian register index
 			//accessType == 1 SS XXXX, decode SS as memory access size, read XXXX as little endian register index, 
 			if (const auto accessTypeResult = m_bitStreamReader.readVar<bitSequenceInteger>(1); accessTypeResult.has_value())
 			{
 				bitSequenceInteger accessType = accessTypeResult.value();
-				argument.data.dataAccess.type = 'r';
+				argument.data.dataAccess.type = DataAccessType::REGISTER;
 				if (accessType == 1)
 				{
 					if (const auto memoryAccessSizeResult = m_bitStreamReader.readVar<bitSequenceInteger>(2); memoryAccessSizeResult.has_value())
 					{
 						bitSequenceInteger memoryAccessSize = memoryAccessSizeResult.value();
 						argument.data.dataAccess.accessSize = m_bitStreamToMemoryAccessSize.at(memoryAccessSize);
-						argument.data.dataAccess.type = 'd';
+						argument.data.dataAccess.type = DataAccessType::DEREFERENCE;
 					}
 					else
 					{
@@ -72,7 +73,6 @@ std::optional<std::vector<EVMArgument>> EVMDisasm::readArguments(std::string arg
 				if (const auto registerIndexResult = m_bitStreamReader.readVar<bitSequenceInteger>(4); registerIndexResult.has_value())
 				{
 					bitSequenceInteger registerIndex = registerIndexResult.value();
-					argument.type = 'R';
 					argument.data.dataAccess.registerIndex = registerIndex;
 				}
 				else
@@ -85,12 +85,11 @@ std::optional<std::vector<EVMArgument>> EVMDisasm::readArguments(std::string arg
 				return std::nullopt;
 			}
 		}
-		else if (arg == 'C')
+		else if (arg == ArgumentType::CONSTANT)
 		{
 			if (const auto constantResult = m_bitStreamReader.readVar<int64_t>(); constantResult.has_value())
 			{
 				int64_t constant = constantResult.value();
-				argument.type = 'C';
 				argument.data.constant = constant;
 			}
 			else
@@ -98,14 +97,13 @@ std::optional<std::vector<EVMArgument>> EVMDisasm::readArguments(std::string arg
 				return std::nullopt;
 			}
 		}
-		else if (arg == 'L')
+		else if (arg == ArgumentType::ADDRESS)
 		{
 			if (const auto codeAddressResult = m_bitStreamReader.readVar<uint32_t>(); codeAddressResult.has_value())
 			{
 				uint32_t codeAddress = codeAddressResult.value();
-				argument.type = 'L';
 				argument.data.codeAddress = codeAddress;
-				m_labelOffsets.push_back(codeAddress);
+				m_labelOffsets.insert(codeAddress);
 			}
 			else
 			{
@@ -140,7 +138,8 @@ std::optional<std::vector<EVMInstruction>> EVMDisasm::parseInstructions()
 			}
 		}
 		EVMInstruction currentInstruction{};
-		currentInstruction.offset = m_bitStreamReader.getStreamPosition();
+		currentInstruction.offset = static_cast<uint32_t>(m_bitStreamReader.getStreamPosition());
+		m_codeOffsetToInstructionNum.insert({currentInstruction.offset, m_currentInstructionNum});
 		EVMOpcode opcode = getOpcode();
 		if (opcode == EVMOpcode::UNKNOWN)
 		{
@@ -148,8 +147,8 @@ std::optional<std::vector<EVMInstruction>> EVMDisasm::parseInstructions()
             return std::nullopt;
 		}
 		currentInstruction.opcode = opcode;
-		std::string argumentLayout = m_opcodeArguments.at(opcode);
-		if (argumentLayout.length() > 0)
+		const std::vector<ArgumentType>& argumentLayout = m_opcodeArguments.at(opcode);
+		if (argumentLayout.size() > 0)
 		{
             std::vector<EVMArgument> arguments;
 			if (const auto argumentResult = readArguments(argumentLayout); argumentResult.has_value())
@@ -163,26 +162,28 @@ std::optional<std::vector<EVMInstruction>> EVMDisasm::parseInstructions()
 			}
 			currentInstruction.arguments = arguments;
 		}
+		m_currentInstructionNum++;
 		instructions.push_back(currentInstruction);
 	}
 	m_instructions = instructions;
 	return instructions;
 }
-std::optional<std::vector<std::string>> EVMDisasm::convertInstructionsToSourceCode(std::vector<EVMInstruction>& instructions)
+std::optional<std::vector<std::string>> EVMDisasm::convertInstructionsToSourceCode(std::vector<EVMInstruction>& instructions, bool labels)
 {
 	std::vector<std::string> sourceCodeLines {};
 	for (const auto& it : instructions)
 	{
 		std::stringstream ss;
-		const auto labelIt = std::find(m_labelOffsets.begin(), m_labelOffsets.end(), it.offset);
-		if (labelIt != m_labelOffsets.end())
+		if (labels)
 		{
-			ss << "sub_" << std::hex << it.offset << ":";
-			ss << std::dec;
-			sourceCodeLines.push_back(ss.str());
-			std::stringstream().swap(ss); // empty ss
+			if (const auto findIt = m_labelOffsets.find(it.offset); findIt != m_labelOffsets.cend())
+			{
+				ss << "sub_" << std::hex << it.offset << ":";
+				ss << std::dec;
+				sourceCodeLines.push_back(ss.str());
+				std::stringstream().swap(ss); // empty ss
+			}
 		}
-		
 		ss << m_opcodeToName.at(it.opcode);
 		if (it.arguments.size() > 0)
 		{
@@ -190,23 +191,23 @@ std::optional<std::vector<std::string>> EVMDisasm::convertInstructionsToSourceCo
 		}
 		for (const auto& argument : it.arguments)
 		{
-			if (argument.type == 'C')
+			if (argument.type == ArgumentType::CONSTANT)
 			{
 				ss << std::hex << "0x" << argument.data.constant;
 				ss << std::dec;
 			}
-			else if (argument.type == 'L')
+			else if (argument.type == ArgumentType::ADDRESS)
 			{
 				ss << "sub_" << std::hex << argument.data.codeAddress;
 				ss << std::dec;
 			}
-			else if (argument.type == 'R')
+			else if (argument.type == ArgumentType::DATA_ACCESS)
 			{
-				if (argument.data.dataAccess.type == 'r')
+				if (argument.data.dataAccess.type == DataAccessType::REGISTER)
 				{
 					ss << "r" << static_cast<int>(argument.data.dataAccess.registerIndex);
 				}
-				else if (argument.data.dataAccess.type == 'd')
+				else if (argument.data.dataAccess.type == DataAccessType::DEREFERENCE)
 				{
 					ss << m_memoryAccessSizeToName.at(argument.data.dataAccess.accessSize) << "[" << "r" << static_cast<int>(argument.data.dataAccess.registerIndex) << "]";
 				}
@@ -220,4 +221,20 @@ std::optional<std::vector<std::string>> EVMDisasm::convertInstructionsToSourceCo
 	}
 	m_sourceCodeLines = sourceCodeLines;
 	return sourceCodeLines;
+}
+std::optional<size_t> EVMDisasm::insNumFromCodeOff(uint32_t codeOffset)
+{
+	if (!m_codeOffsetToInstructionNum.contains(codeOffset))
+	{
+		return std::nullopt;
+	}
+	return m_codeOffsetToInstructionNum.at(codeOffset);
+}
+std::optional<std::string> EVMDisasm::getSourceCodeLineForIp (size_t ip)
+{
+	if (ip >= m_sourceCodeLines.size())
+	{
+		return std::nullopt;
+	}
+	return m_sourceCodeLines.at(ip);
 }

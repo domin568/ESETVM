@@ -3,25 +3,28 @@
 
 int main (int argc, char** argv)
 {
-	CLIArgParser cliParser {argc, argv};
+	CLIArgParser cliParser {argc, (const char**) argv};
 	if (cliParser.parseArguments())
 	{
-		cmdLineFlags CLIflags = cliParser.getFlags();
-		ESETVM evm {cliParser.getInputPath(), cliParser.getOutpuPath()}; // outputPath empty if not set
+		cmdLineFlags cliFlags = cliParser.getFlags();
+		ESETVM evm {cliParser.getInputPath(), cliParser.getOutpuPath(), cliFlags.verbose}; // outputPath empty if not set
 		if (evm.init() != ESETVMStatus::SUCCESS)
 		{
 			return 1;
 		}
-		if (CLIflags.disassemble)
+		if (cliFlags.disassemble)
 		{
-			if (evm.disassemble() != ESETVMStatus::SUCCESS)
+			if (evm.saveSourceCode() != ESETVMStatus::SUCCESS)
 			{
 				return 2;
 			}
 		}
-		else if (CLIflags.run)
+		else if (cliFlags.run)
 		{
-			// to implement running .evm files
+			if (evm.run(cliParser.getBinaryFilePath()) != ESETVMStatus::SUCCESS)
+			{
+				return 3;
+			}
 		}
 	}
 	return 0;

@@ -2,3 +2,4 @@ build/
 .DS_Store
 *.xcodeproj
 proj_macos/
+recompile_test/

@@ -1,11 +1,13 @@
 #pragma once
 #include "utils.h"
-#include "bitStreamReader.h"
+#include "BitStreamReader.h"
+#include "EVMTypes.h"
 #include <inttypes.h>
 #include <vector>
 #include <map>
 #include <sstream>
 #include <optional>
+#include <set>
 
 enum class EVMDisasmStatus
 {
@@ -15,137 +17,81 @@ enum class EVMDisasmStatus
 	INSTRUCTIONS_TO_SOURCE_CODE_ERROR
 };
 
-enum class EVMOpcode
-{
-	UNKNOWN,
-	MOV,
-	LOADCONST,
-	ADD,
-	SUB,
-	DIV,
-	MOD,
-	MUL,
-	COMPARE,
-	JUMP,
-	JUMPEQUAL,
-	READ,
-	WRITE,
-	CONSOLEREAD,
-	CONSOLEWRITE,
-	CREATETHREAD,
-	JOINTHREAD,
-	HLT,
-	SLEEP,
-	CALL,
-	RET,
-	LOCK,
-	UNLOCK
-};
-enum class MemoryAccessSize
-{
-	NONE,
-	BYTE,
-	WORD,
-	DWORD,
-	QWORD
-};
-struct DataAccess
-{
-	char type; // 'r' for register and 'd' for dereference
-	MemoryAccessSize accessSize;
-	uint8_t registerIndex;
-};
-struct EVMArgument
-{
-	char type; // R for register data access, L for code offset, C for constant
-	union
-	{
-		uint32_t codeAddress;
-		int64_t constant;
-		DataAccess dataAccess;
-	}data;
-};
-struct EVMInstruction
-{
-	EVMOpcode opcode;
-	uint64_t offset; // in file
-	std::vector<EVMArgument> arguments;
-};
-
-using bitSequenceInteger = uint8_t;
-
 class EVMDisasm
 {
 private:
 	BitStreamReader m_bitStreamReader {};
 	EVMDisasmStatus m_error {EVMDisasmStatus::SUCCESS};
 
-	std::vector<EVMInstruction> m_instructions{};
-	std::vector<std::string> m_sourceCodeLines{};
-	std::vector<uint32_t> m_labelOffsets{};
+	std::vector<EVMInstruction> m_instructions {};
+	std::vector<std::string> m_sourceCodeLines {};
+	std::set<uint32_t> m_labelOffsets {};
+	std::map<uint32_t, size_t> m_codeOffsetToInstructionNum {};
+	size_t m_currentInstructionNum {};
 
 	// total 21 opcodes
 	const std::vector<std::map<bitSequenceInteger, EVMOpcode>> m_opcodeBitsequences =
 	{
 		{
 			// 2 * 3 bits
-			{0b000,EVMOpcode::MOV},
-			{0b001,EVMOpcode::LOADCONST}
+			{0b000, EVMOpcode::MOV},
+			{0b001, EVMOpcode::LOADCONST}
 		},
 		{
 			// 4 * 4 bits
-			{0b1100,EVMOpcode::CALL},
-			{0b1101,EVMOpcode::RET},
-			{0b1110,EVMOpcode::LOCK},
-			{0b1111,EVMOpcode::UNLOCK},
+			{0b1100, EVMOpcode::CALL},
+			{0b1101, EVMOpcode::RET},
+			{0b1110, EVMOpcode::LOCK},
+			{0b1111, EVMOpcode::UNLOCK},
 		},
 		{
 			// 10 * 5 bits
-			{0b01100,EVMOpcode::COMPARE},
-			{0b01101,EVMOpcode::JUMP},
-			{0b01110,EVMOpcode::JUMPEQUAL},
-			{0b10000,EVMOpcode::READ},
-			{0b10001,EVMOpcode::WRITE},
-			{0b10010,EVMOpcode::CONSOLEREAD},
-			{0b10011,EVMOpcode::CONSOLEWRITE},
-			{0b10100,EVMOpcode::CREATETHREAD},
-			{0b10101,EVMOpcode::JOINTHREAD},
-			{0b10110,EVMOpcode::HLT},
-			{0b10111,EVMOpcode::SLEEP},
+			{0b01100, EVMOpcode::COMPARE},
+			{0b01101, EVMOpcode::JUMP},
+			{0b01110, EVMOpcode::JUMPEQUAL},
+			{0b10000, EVMOpcode::READ},
+			{0b10001, EVMOpcode::WRITE},
+			{0b10010, EVMOpcode::CONSOLEREAD},
+			{0b10011, EVMOpcode::CONSOLEWRITE},
+			{0b10100, EVMOpcode::CREATETHREAD},
+			{0b10101, EVMOpcode::JOINTHREAD},
+			{0b10110, EVMOpcode::HLT},
+			{0b10111, EVMOpcode::SLEEP},
 		},
 		{
 			// 5 * 6 bits
-			{0b010001,EVMOpcode::ADD},
-			{0b010010,EVMOpcode::SUB},
-			{0b010011,EVMOpcode::DIV},
-			{0b010100,EVMOpcode::MOD},
-			{0b010101,EVMOpcode::MUL}
+			{0b010001, EVMOpcode::ADD},
+			{0b010010, EVMOpcode::SUB},
+			{0b010011, EVMOpcode::DIV},
+			{0b010100, EVMOpcode::MOD},
+			{0b010101, EVMOpcode::MUL}
 		}
 	};
-	const std::map<EVMOpcode, std::string> m_opcodeArguments =
+	
+	const std::map<EVMOpcode, std::vector<ArgumentType>> m_opcodeArguments =
 	{
-		{EVMOpcode::MOV, "RR"},
-		{EVMOpcode::LOADCONST, "CR"},
-		{EVMOpcode::CALL, "L"},
-		{EVMOpcode::RET, ""},
-		{EVMOpcode::LOCK, "R"},
-		{EVMOpcode::UNLOCK, "R"},
-		{EVMOpcode::COMPARE, "RRR"},
-		{EVMOpcode::JUMP, "L"},
-		{EVMOpcode::JUMPEQUAL, "LRR"},
-		{EVMOpcode::READ, "RRRR"},
-		{EVMOpcode::WRITE, "RRR"},
-		{EVMOpcode::CONSOLEREAD, "R"},
-		{EVMOpcode::CONSOLEWRITE, "R"},
-		{EVMOpcode::CREATETHREAD, "LR"},
-		{EVMOpcode::JOINTHREAD, "R"},
-		{EVMOpcode::HLT, ""},
-		{EVMOpcode::SLEEP, "R"},
-		{EVMOpcode::ADD, "RRR"},
-		{EVMOpcode::SUB, "RRR"},
-		{EVMOpcode::DIV, "RRR"},
-		{EVMOpcode::MOD, "RRR"},
-		{EVMOpcode::MUL, "RRR"}
+		{EVMOpcode::MOV, {ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::LOADCONST, {ArgumentType::CONSTANT, ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::CALL, {ArgumentType::ADDRESS}},
+		{EVMOpcode::RET, {}},
+		{EVMOpcode::LOCK, {ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::UNLOCK, {ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::COMPARE, {ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::JUMP, {ArgumentType::ADDRESS}},
+		{EVMOpcode::JUMPEQUAL, {ArgumentType::ADDRESS, ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::READ, {ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::WRITE, {ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::CONSOLEREAD, {ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::CONSOLEWRITE, {ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::CREATETHREAD, {ArgumentType::ADDRESS, ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::JOINTHREAD, {ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::HLT, {}},
+		{EVMOpcode::SLEEP, {ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::ADD, {ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::SUB, {ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::DIV, {ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::MOD, {ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS}},
+		{EVMOpcode::MUL, {ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS}}
 	};
 	const std::map<bitSequenceInteger, MemoryAccessSize> m_bitStreamToMemoryAccessSize =
 	{
@@ -189,7 +135,7 @@ private:
 	};
 	EVMOpcode checkOpcode(uint8_t opcodeSize);
 	EVMOpcode getOpcode();
-	std::optional<std::vector<EVMArgument>> readArguments(std::string argumentLayout);
+	std::optional<std::vector<EVMArgument>> readArguments(const std::vector<ArgumentType>& argumentLayout);
 	
 public:
 	EVMDisasm(){};
@@ -197,7 +143,9 @@ public:
 	void init(const std::vector<std::byte>& input);
 	EVMDisasmStatus getError() const { return m_error; };
 	std::optional<std::vector<EVMInstruction>> parseInstructions();
-	std::optional<std::vector<std::string>> convertInstructionsToSourceCode(std::vector<EVMInstruction>& instructions);
+	std::optional<std::vector<std::string>> convertInstructionsToSourceCode(std::vector<EVMInstruction>& instructions, bool labels = true);
 	std::vector<std::string> getSourceCodeLines() { return m_sourceCodeLines; }
+	std::optional<size_t> insNumFromCodeOff(uint32_t codeOffset);
+	std::optional<std::string> getSourceCodeLineForIp (size_t ip);
 };
 

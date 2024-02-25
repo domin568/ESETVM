@@ -54,7 +54,7 @@ public:
 	uint64_t getStreamPosition() const { return m_bitStreamPosition; }
 	
 	template <typename T>
-	std::optional<T> readVar(int overrideCountBytes = 0, bool movePointer = true, bool bigEndian = false)
+	std::optional<T> readVar(size_t overrideCountBytes = 0, bool movePointer = true, bool bigEndian = false)
 	{
 		std::vector<bool> bits;
 		if (overrideCountBytes == 0)

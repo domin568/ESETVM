@@ -279,21 +279,21 @@ bool areInstructionsEqual(const std::vector<EVMInstruction>& vec1, const std::ve
 			{
 				return false;
 			}
-			if (vec1[i].arguments[j].type == 'C')
+			if (vec1[i].arguments[j].type == ArgumentType::CONSTANT)
 			{
 				if (vec1[i].arguments[j].data.constant != vec2[i].arguments[j].data.constant)
 				{
 					return false;
 				}
 			}
-			else if (vec1[i].arguments[j].type == 'L')
+			else if (vec1[i].arguments[j].type == ArgumentType::ADDRESS)
 			{
 				if (vec1[i].arguments[j].data.codeAddress != vec2[i].arguments[j].data.codeAddress)
 				{
 					return false;
 				}
 			}
-			else if (vec1[i].arguments[j].type == 'R')
+			else if (vec1[i].arguments[j].type == ArgumentType::DATA_ACCESS)
 			{
 				if (vec1[i].arguments[j].data.dataAccess.type != vec2[i].arguments[j].data.dataAccess.type)
 				{
@@ -313,40 +313,40 @@ bool areInstructionsEqual(const std::vector<EVMInstruction>& vec1, const std::ve
 void initializeCrcInstructionsTest()
 {
 	EVMInstruction i1{}; i1.opcode = EVMOpcode::LOADCONST;
-	EVMArgument const1; const1.type = 'C'; const1.data.constant = static_cast<int64_t>(10000); i1.arguments.push_back(const1);
-	EVMArgument arg1; arg1.type = 'R';  arg1.data.dataAccess.type = 'r'; arg1.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1.data.dataAccess.registerIndex = 14; i1.arguments.push_back(arg1);
+	EVMArgument const1; const1.type = ArgumentType::CONSTANT; const1.data.constant = static_cast<int64_t>(10000); i1.arguments.push_back(const1);
+	EVMArgument arg1; arg1.type = ArgumentType::DATA_ACCESS;  arg1.data.dataAccess.type = DataAccessType::REGISTER; arg1.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1.data.dataAccess.registerIndex = 14; i1.arguments.push_back(arg1);
 	crcInstructionsTest.push_back(i1);
 
 	EVMInstruction i2{}; i2.opcode = EVMOpcode::LOADCONST;
-	EVMArgument const2{}; const2.type = 'C'; const2.data.constant = static_cast<int64_t>(0xFFFFFFFF); i2.arguments.push_back(const2);
-	EVMArgument arg1_1{}; arg1_1.type = 'R'; arg1_1.data.dataAccess.type = 'r'; arg1_1.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_1.data.dataAccess.registerIndex = 10; i2.arguments.push_back(arg1_1);
+	EVMArgument const2{}; const2.type = ArgumentType::CONSTANT; const2.data.constant = static_cast<int64_t>(0xFFFFFFFF); i2.arguments.push_back(const2);
+	EVMArgument arg1_1{}; arg1_1.type = ArgumentType::DATA_ACCESS; arg1_1.data.dataAccess.type = DataAccessType::REGISTER; arg1_1.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_1.data.dataAccess.registerIndex = 10; i2.arguments.push_back(arg1_1);
 	crcInstructionsTest.push_back(i2);
 
 	EVMInstruction i3{}; i3.opcode = EVMOpcode::LOADCONST;
-	EVMArgument const3{}; const3.type = 'C'; const3.data.constant = static_cast<int64_t>(0); i3.arguments.push_back(const3);
-	EVMArgument arg1_2{}; arg1_2.type = 'R'; arg1_2.data.dataAccess.type = 'r'; arg1_2.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_2.data.dataAccess.registerIndex = 11; i3.arguments.push_back(arg1_2);
+	EVMArgument const3{}; const3.type = ArgumentType::CONSTANT; const3.data.constant = static_cast<int64_t>(0); i3.arguments.push_back(const3);
+	EVMArgument arg1_2{}; arg1_2.type = ArgumentType::DATA_ACCESS; arg1_2.data.dataAccess.type = DataAccessType::REGISTER; arg1_2.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_2.data.dataAccess.registerIndex = 11; i3.arguments.push_back(arg1_2);
 	crcInstructionsTest.push_back(i3);
 
 	EVMInstruction i4{}; i4.opcode = EVMOpcode::LOADCONST;
-	EVMArgument const4{}; const4.type = 'C'; const4.data.constant = static_cast<int64_t>(0); i4.arguments.push_back(const4);
-	EVMArgument arg1_3{}; arg1_3.type = 'R'; arg1_3.data.dataAccess.type = 'r'; arg1_3.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_3.data.dataAccess.registerIndex = 12; i4.arguments.push_back(arg1_3);
+	EVMArgument const4{}; const4.type = ArgumentType::CONSTANT; const4.data.constant = static_cast<int64_t>(0); i4.arguments.push_back(const4);
+	EVMArgument arg1_3{}; arg1_3.type = ArgumentType::DATA_ACCESS; arg1_3.data.dataAccess.type = DataAccessType::REGISTER; arg1_3.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_3.data.dataAccess.registerIndex = 12; i4.arguments.push_back(arg1_3);
 	crcInstructionsTest.push_back(i4);
 
 	EVMInstruction i5{}; i5.opcode = EVMOpcode::LOADCONST;
-	EVMArgument const5{}; const5.type = 'C'; const5.data.constant = static_cast<int64_t>(1); i5.arguments.push_back(const5);
-	EVMArgument arg1_4{}; arg1_4.type = 'R'; arg1_4.data.dataAccess.type = 'r'; arg1_4.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_4.data.dataAccess.registerIndex = 13; i5.arguments.push_back(arg1_4);
+	EVMArgument const5{}; const5.type = ArgumentType::CONSTANT; const5.data.constant = static_cast<int64_t>(1); i5.arguments.push_back(const5);
+	EVMArgument arg1_4{}; arg1_4.type = ArgumentType::DATA_ACCESS; arg1_4.data.dataAccess.type = DataAccessType::REGISTER; arg1_4.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_4.data.dataAccess.registerIndex = 13; i5.arguments.push_back(arg1_4);
 	crcInstructionsTest.push_back(i5);
 
 	EVMInstruction i6{}; i6.opcode = EVMOpcode::LOADCONST;
-	EVMArgument const6{}; const6.type = 'C'; const6.data.constant = static_cast<int64_t>(4); i6.arguments.push_back(const6);
-    EVMArgument arg1_5{}; arg1_5.type = 'R'; arg1_5.data.dataAccess.type = 'r'; arg1_5.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_5.data.dataAccess.registerIndex = 9; i6.arguments.push_back(arg1_5);
+	EVMArgument const6{}; const6.type = ArgumentType::CONSTANT; const6.data.constant = static_cast<int64_t>(4); i6.arguments.push_back(const6);
+    EVMArgument arg1_5{}; arg1_5.type = ArgumentType::DATA_ACCESS; arg1_5.data.dataAccess.type = DataAccessType::REGISTER; arg1_5.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1_5.data.dataAccess.registerIndex = 9; i6.arguments.push_back(arg1_5);
 	crcInstructionsTest.push_back(i6);
 
 	EVMInstruction i7{}; i7.opcode = EVMOpcode::RET;
 	crcInstructionsTest.push_back(i7);
 }
 
-TEST(InstructionParsingTest, ParsingInstruction)
+TEST(DisassembleTest, ParsingInstruction)
 {
 	EVMDisasm disasm(crcCodeTest);
 
@@ -370,7 +370,7 @@ TEST(InstructionParsingTest, ParsingInstruction)
 	EXPECT_TRUE(sourceCodeTransform.has_value());
 }
 
-TEST(BitStreamReader, CrcTest)
+TEST(BitStreamReaderTest, CrcTest)
 {
 	BitStreamReader bitStreamReader (crcCodeTest);
 	std::vector<bool> bitStream;
@@ -384,7 +384,7 @@ TEST(BitStreamReader, CrcTest)
 	}
 	EXPECT_EQ(bitStreamString, crcBitStreamTest);
 }
-TEST(InstructionParsingCrcTest, Disasm)
+TEST(DisassembleTest, InstructionParsingCrcTest)
 {
 	EVMDisasm disasm(crcCodeFull);
 	EXPECT_EQ(disasm.getError(), EVMDisasmStatus::SUCCESS);
@@ -405,7 +405,7 @@ TEST(InstructionParsingCrcTest, Disasm)
 	EXPECT_TRUE(sourceCodeTransform.has_value());
 	EXPECT_TRUE(std::equal(sourceCodeLines.begin(), sourceCodeLines.end(), crcDisasmFull.begin(), crcDisasmFull.end()));
 }
-TEST(ArgumentParsingTest, CliArguments)
+TEST(CliTest, CliArguments)
 {
 	int argc = 2;
 	const char* argv [2] {"", "-r"};
@@ -433,10 +433,31 @@ TEST(ArgumentParsingTest, CliArguments)
 	CLIArgParser parse4 {argc, argv4};
 	EXPECT_FALSE(parse4.parseArguments());
 	
-	argc = 3;
-	const char* argv5[] {"","-d","output_file.txt"};
+	
+	argc = 6;
+	std::string binaryPath = testPath + "/samples/crc.bin";
+	const char* argv5[] {"","-d", inputPath1.c_str(), "output_file.txt", "-b", binaryPath.c_str()};
 	CLIArgParser parse5 {argc, argv5};
 	EXPECT_FALSE(parse5.parseArguments());
+	
+	argc = 3;
+	const char* argv6[] {"","-b", binaryPath.c_str()};
+	CLIArgParser parse6 {argc, argv6};
+	EXPECT_FALSE(parse6.parseArguments());
+	
+	argc = 8;
+	const char* argv7[] {"","-b", binaryPath.c_str(), "-r", inputPath1.c_str(), "-d", inputPath1.c_str(), "-h"};
+	CLIArgParser parse7 {argc, argv7};
+	EXPECT_FALSE(parse7.parseArguments());
+	
+	argc = 5;
+	const char* argv8[] {"","-b", binaryPath.c_str(), "-r", inputPath1.c_str()};
+	CLIArgParser parse8 {argc, argv8};
+	EXPECT_TRUE(parse8.parseArguments());
+	EXPECT_TRUE(parse8.getFlags().binaryFile);
+	EXPECT_TRUE(parse8.getFlags().run);
+	EXPECT_EQ(parse8.getInputPath(), inputPath1);
+	EXPECT_EQ(parse8.getBinaryFilePath(), binaryPath);
 }
 
 std::vector<std::string> getAllFilesInDirectory(const std::string& directoryPath) 
@@ -452,7 +473,7 @@ std::vector<std::string> getAllFilesInDirectory(const std::string& directoryPath
 	return files;
 }
 
-TEST(AllSamplesTest, DeassembleAllProvidedSamples)
+TEST(DisassembleTest, DisassembleAllProvidedSamples)
 {
 	std::string evmFilesFolder = testPath + "/samples/precompiled/";
 	std::string outputFileFolder = testPath + "/samples/recompile_test/";
@@ -469,9 +490,9 @@ TEST(AllSamplesTest, DeassembleAllProvidedSamples)
 			std::string fileName = path.stem().string();
 			std::string outputFilePath = outputFileFolder + fileName + "_decompiled.easm";
 			
-			ESETVM evm {filePath, outputFilePath};
+			ESETVM evm {filePath, outputFilePath, false};
 			EXPECT_EQ(evm.init(), ESETVMStatus::SUCCESS);
-			EXPECT_EQ(evm.disassemble(), ESETVMStatus::SUCCESS);
+			EXPECT_EQ(evm.saveSourceCode(), ESETVMStatus::SUCCESS);
 			
 			std::string recompiledPath = outputFileFolder + fileName + "_recompiled.evm";
 			std::string command = "python2 " + testPath + "/compiler.py " + outputFilePath + " " + recompiledPath;
@@ -490,3 +511,92 @@ TEST(AllSamplesTest, DeassembleAllProvidedSamples)
 	}
 }
 
+bool testEmulation(std::string path, const std::vector<std::string>& inputs, const std::string& expectedOutput)
+{
+	std::ostringstream concatInput;
+	for (const auto& input: inputs)
+	{
+		if (input.length() > 0)
+		{
+			concatInput << input << std::endl;
+		}
+	}
+	
+	std::istringstream inputStream(concatInput.str());
+	std::ostringstream outputStream;
+	
+	std::streambuf* coutbuf = std::cout.rdbuf();
+	std::streambuf* cinbuf = std::cin.rdbuf();
+	
+	std::cout.rdbuf(outputStream.rdbuf());
+	std::cin.rdbuf(inputStream.rdbuf());
+	
+	ESETVM evm {path, "", false};
+	if (evm.init() != ESETVMStatus::SUCCESS)
+	{
+		return false;
+	}
+	std::string crcBin = testPath + "/samples/crc.bin";
+	if (evm.run(crcBin) != ESETVMStatus::SUCCESS)
+	{
+		return false;
+	}
+	std::cout.rdbuf(coutbuf);
+	std::cin.rdbuf(cinbuf);
+	
+	std::string output {outputStream.str()};
+	std::cout << output;
+	if (output != expectedOutput)
+	{
+		return false;
+	}
+	return true;
+}
+
+TEST (EmulationTest, Math)
+{
+	std::string mathEvm = testPath + "/samples/precompiled/math.evm";
+	EXPECT_TRUE(testEmulation(mathEvm, {""},  "0000000000000118\n00000000000000e8\n000000000000000a\n0000000000000010\n0000000000001800\n0000000000000001\n"));
+}
+TEST (EmulationTest, Fibonacci)
+{
+	std::string fibonacciEvm = testPath + "/samples/precompiled/fibonacci_loop.evm";
+	EXPECT_TRUE(testEmulation(fibonacciEvm, {"5"},  "0000000000000001\n0000000000000001\n0000000000000002\n0000000000000003\n0000000000000005\n")); // not valid fibonacci sequence
+}
+TEST (EmulationTest, Memory)
+{
+	std::string memoryEvm = testPath + "/samples/precompiled/memory.evm";
+	EXPECT_TRUE(testEmulation(memoryEvm, {""},  "0123456789abcdef\n0000000089abcdef\n000000000000cdef\n00000000000000ef\n0000000001234567\n0000000001234567\n0000000000004567\n0000000000000067\n0000000000000000\n0000000000000000\n0000000000000000\n0000000000000000\n"));
+}
+TEST (EmulationTest, Xor)
+{
+	std::string xorEvm = testPath + "/samples/precompiled/xor.evm";
+	EXPECT_TRUE(testEmulation(xorEvm, {"123456", "98765"}, "00000000001bb333\n"));
+}
+TEST (EmulationTest, XorWithStackFrame)
+{
+	std::string xorWithStackFrameEvm = testPath + "/samples/precompiled/xor-with-stack-frame.evm";
+	EXPECT_TRUE(testEmulation(xorWithStackFrameEvm, {"123456", "98765"}, "00000000001bb333\n"));
+}
+
+TEST (EmulationTest, Crc)
+{
+	std::string crcEvm = testPath + "/samples/precompiled/crc.evm";
+	EXPECT_TRUE(testEmulation(crcEvm, {""}, "000000008407759b\n"));
+}
+/*
+TEST (EmulationTest, AllSamples)
+{
+	std::string evmFilesFolder = testPath + "/samples/precompiled/";
+	std::vector<std::string> evmFilePaths = getAllFilesInDirectory(evmFilesFolder);
+	for (const auto& filePath : evmFilePaths)
+	{
+		if(filePath.ends_with(".evm"))
+		{
+			ESETVM evm {filePath, ""};
+			EXPECT_EQ(evm.init(), ESETVMStatus::SUCCESS);
+			EXPECT_EQ(evm.run(), ESETVMStatus::SUCCESS);
+		}
+	}
+}
+*/

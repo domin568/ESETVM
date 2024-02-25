@@ -13,7 +13,7 @@ enable_testing()
 
 set (EXECUTABLE_NAME ${PROJECT_NAME})
 set (SOURCE_FILES src/EVMDisasm.cpp src/EVMFile.cpp src/utils.cpp src/EVMEmu.cpp src/ESETVM.cpp src/CLIArgParser.cpp src/BitStreamReader.cpp)
-set (HEADER_FILES src/EVMDisasm.h src/EVMFile.h src/utils.h src/EVMEmu.h src/ESETVM.h src/CLIArgParser.h src/BitStreamReader.h)
+set (HEADER_FILES src/EVMDisasm.h src/EVMFile.h src/utils.h src/EVMEmu.h src/ESETVM.h src/CLIArgParser.h src/BitStreamReader.h src/EVMTypes.h)
 
 # Create a library containing common source files
 add_library(EsetVMLibrary STATIC ${SOURCE_FILES} ${HEADER_FILES})

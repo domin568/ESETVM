@@ -26,11 +26,11 @@ private:
 	std::vector<EVMInstruction> m_instructions {};
 	std::vector<std::string> m_sourceCodeLines {};
 	std::set<uint32_t> m_labelOffsets {};
-	std::map<uint32_t, size_t> m_codeOffsetToInstructionNum {};
+	std::unordered_map<uint32_t, size_t> m_codeOffsetToInstructionNum {};
 	size_t m_currentInstructionNum {};
 
 	// total 21 opcodes
-	const std::vector<std::map<bitSequenceInteger, EVMOpcode>> m_opcodeBitsequences =
+	const std::vector<std::unordered_map<bitSequenceInteger, EVMOpcode>> m_opcodeBitsequences =
 	{
 		{
 			// 2 * 3 bits
@@ -68,7 +68,7 @@ private:
 		}
 	};
 	
-	const std::map<EVMOpcode, std::vector<ArgumentType>> m_opcodeArguments =
+	const std::unordered_map<EVMOpcode, std::vector<ArgumentType>> m_opcodeArguments =
 	{
 		{EVMOpcode::MOV, {ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS}},
 		{EVMOpcode::LOADCONST, {ArgumentType::CONSTANT, ArgumentType::DATA_ACCESS}},
@@ -93,14 +93,14 @@ private:
 		{EVMOpcode::MOD, {ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS}},
 		{EVMOpcode::MUL, {ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS, ArgumentType::DATA_ACCESS}}
 	};
-	const std::map<bitSequenceInteger, MemoryAccessSize> m_bitStreamToMemoryAccessSize =
+	const std::unordered_map<bitSequenceInteger, MemoryAccessSize> m_bitStreamToMemoryAccessSize =
 	{
 		{0b00, MemoryAccessSize::BYTE},
 		{0b01, MemoryAccessSize::WORD},
 		{0b10, MemoryAccessSize::DWORD},
 		{0b11, MemoryAccessSize::QWORD}
 	};
-	const std::map<EVMOpcode, std::string> m_opcodeToName =
+	const std::unordered_map<EVMOpcode, std::string> m_opcodeToName =
 	{
 		{EVMOpcode::UNKNOWN, "unknown"}, 
 		{EVMOpcode::MOV, "mov"},
@@ -126,7 +126,7 @@ private:
 		{EVMOpcode::MOD, "mod"},
 		{EVMOpcode::MUL, "mul"}
 	};
-	const std::map<MemoryAccessSize, std::string> m_memoryAccessSizeToName =
+	const std::unordered_map<MemoryAccessSize, std::string> m_memoryAccessSizeToName =
 	{
 		{MemoryAccessSize::BYTE, "byte"},
 		{MemoryAccessSize::WORD, "word"},
@@ -145,7 +145,7 @@ public:
 	std::optional<std::vector<EVMInstruction>> parseInstructions();
 	std::optional<std::vector<std::string>> convertInstructionsToSourceCode(std::vector<EVMInstruction>& instructions, bool labels = true);
 	std::vector<std::string> getSourceCodeLines() { return m_sourceCodeLines; }
-	std::optional<size_t> insNumFromCodeOff(uint32_t codeOffset);
-	std::optional<std::string> getSourceCodeLineForIp (size_t ip);
+	std::optional<size_t> insNumFromCodeOff(uint32_t codeOffset) const;
+	std::optional<std::string> getSourceCodeLineForIp (size_t ip) const;
 };
 

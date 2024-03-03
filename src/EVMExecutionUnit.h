@@ -1,44 +1,53 @@
 #pragma once
 
+#include "ESETVM.h"
 #include "EVMDisasm.h"
 #include "EVMTypes.h"
 #include <chrono>
+#include <future>
 #include <vector>
 #include <inttypes.h>
 #include <iostream>
+#include <map>
 #include <ranges>
 #include <stack>
 #include <thread>
 
-enum class EVMEmuStatus
-{
-	SUCCESS,
-	EXECUTION_ERROR,
-	FETCH_ERROR
-};
-
 using registerIntegerType = int64_t;
 
-class EVMEmu
+struct EVMContext
+{
+	std::vector<int64_t> registers;
+	size_t ip;
+	std::stack<size_t> callStack;
+	EVMContext(size_t registerCount): registers{}, ip{0}, callStack{}{registers.resize(registerCount);}
+};
+class EVMExecutionUnit
 {
 private:
+	static std::mutex printCrashMutex;
+	static std::mutex writeMemoryMutex;
+	static std::mutex writeFileMutex;
+	static std::mutex consoleReadMutex;
+	static std::mutex consoleWriteMutex;
+	static std::mutex verboseMutex;
+	static std::mutex muticesMutex;
+	static std::atomic<size_t> emulatedInstructionCount;
 	
-	struct EVMContext
-	{
-		std::vector<int64_t> registers;
-		size_t ip;
-		std::stack<size_t> callStack;
-	};
+	std::optional<size_t> m_maxEmulatedInstructionCount{};
 	
-	std::vector<EVMInstruction> m_instructions;
-	std::vector<uint8_t> m_memory {};
-	
-	EVMDisasm& m_disasm;
-	std::string m_binaryFilePath {};
-	EVMContext mainThreadContext {};
+	EVMContext m_threadContext;
 	
 	bool m_running {};
 	bool m_verbose {};
+	
+	const std::vector<EVMInstruction>& m_instructions;
+	std::vector<uint8_t>& m_memory;
+	const EVMDisasm& m_disasm;
+	const std::string& m_binaryFilePath {};
+	
+	std::unordered_map<registerIntegerType, std::thread> m_threads {};
+	std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>>& m_mutices;
 	
 	std::optional<EVMInstruction> fetchInstruction();
 	bool executeInstruction(const EVMInstruction& instruction);
@@ -59,7 +68,6 @@ private:
 	bool consoleWrite (const EVMInstruction& instruction);
 	bool createThread (const EVMInstruction& instruction);
 	bool joinThread (const EVMInstruction& instruction);
-	bool hlt (const EVMInstruction& instruction);
 	bool sleep (const EVMInstruction& instruction);
 	std::optional<size_t> call (const EVMInstruction& instruction);
 	std::optional<size_t> ret (const EVMInstruction& instruction);
@@ -67,6 +75,7 @@ private:
 	bool unlock (const EVMInstruction& instruction);
 	
 public:
-	EVMEmu(std::vector<EVMInstruction>& instructions, uint32_t dataSize, std::vector<std::byte>& initialDataBytes, uint32_t defaultStackSize, EVMDisasm& disasm, std::string binaryFile, bool verbose);
-	EVMEmuStatus run();
+	EVMExecutionUnit(const std::vector<EVMInstruction>& instructions, std::vector<uint8_t>& memory, const EVMDisasm& disasm, EVMContext context, std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>>& mutices, const std::string& binaryFile, bool verbose);
+	ESETVMStatus run();
 };
+

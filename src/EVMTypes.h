@@ -74,4 +74,17 @@ struct EVMInstruction
 	std::vector<EVMArgument> arguments;
 };
 
+enum class ESETVMStatus
+{
+	SUCCESS,
+	INPUT_FILE_PARSING_ERROR,
+	DEASSEMBLE_ERROR,
+	PRODUCE_SOURCE_CODE_ERROR,
+	SOURCE_CODE_WRITE_ERROR,
+	EMULATION_ERROR,
+	EMULATION_INS_NUM_EXCEEDED,
+	EXECUTION_ERROR,
+	FETCH_ERROR,
+};
+
 using bitSequenceInteger = uint8_t;

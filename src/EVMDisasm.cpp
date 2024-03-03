@@ -222,7 +222,7 @@ std::optional<std::vector<std::string>> EVMDisasm::convertInstructionsToSourceCo
 	m_sourceCodeLines = sourceCodeLines;
 	return sourceCodeLines;
 }
-std::optional<size_t> EVMDisasm::insNumFromCodeOff(uint32_t codeOffset)
+std::optional<size_t> EVMDisasm::insNumFromCodeOff(uint32_t codeOffset) const
 {
 	if (!m_codeOffsetToInstructionNum.contains(codeOffset))
 	{
@@ -230,7 +230,7 @@ std::optional<size_t> EVMDisasm::insNumFromCodeOff(uint32_t codeOffset)
 	}
 	return m_codeOffsetToInstructionNum.at(codeOffset);
 }
-std::optional<std::string> EVMDisasm::getSourceCodeLineForIp (size_t ip)
+std::optional<std::string> EVMDisasm::getSourceCodeLineForIp (size_t ip) const
 {
 	if (ip >= m_sourceCodeLines.size())
 	{

@@ -1,6 +1,4 @@
 #include "ESETVM.h"
-#include "EVMDisasm.h"
-#include "EVMFile.h"
 
 ESETVM::ESETVM(std::string inputPath, std::string outputPath, bool verbose):
 m_inputPath(inputPath),
@@ -74,11 +72,17 @@ ESETVMStatus ESETVM::saveSourceCode()
 ESETVMStatus ESETVM::run(const std::string& binaryFile)
 {
 	std::vector<std::byte> initialDataBytes = m_file.getDataBytes();
-	EVMEmu emu {m_instructions, m_file.getDataSize(), initialDataBytes, Default_Stack_Size, m_disasm, binaryFile, m_verbose};
-	m_disasm.convertInstructionsToSourceCode(m_instructions, false);
-	if (emu.run() != EVMEmuStatus::SUCCESS)
+	std::vector<uint8_t> memory {};
+	memory.resize(m_file.getDataSize());
+	if (initialDataBytes.size() > 0)
 	{
-		return ESETVMStatus::EMULATION_ERROR;
+		std::copy(initialDataBytes.begin(), initialDataBytes.end(),
+				  reinterpret_cast<std::byte*>(memory.data()));
 	}
-	return ESETVMStatus::SUCCESS;
+	EVMContext mainThreadContext {Register_Count};
+	std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>> mutices {};
+	m_disasm.convertInstructionsToSourceCode(m_instructions, false);
+	
+	EVMExecutionUnit mainThread {m_instructions, memory, m_disasm, mainThreadContext, mutices, binaryFile, m_verbose};
+	return mainThread.run();
 }

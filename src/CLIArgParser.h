@@ -1,9 +1,9 @@
 #pragma once
 
-#include <string>
 #include <algorithm>
-#include <iostream>
 #include <filesystem>
+#include <iostream>
+#include <string>
 
 struct cmdLineFlags
 {
@@ -37,6 +37,6 @@ public:
 	void showHelp();
 	cmdLineFlags getFlags() const { return m_cliFlags; }
 	std::string getInputPath() const { return m_inputPath; }
-	std::string getOutpuPath() const { return m_outputPath; }
+	std::string getOutputPath() const { return m_outputPath; }
 	std::string getBinaryFilePath() const { return m_binaryFilePath; }
 };

@@ -143,7 +143,7 @@ std::optional<std::vector<EVMInstruction>> EVMDisasm::parseInstructions()
 		EVMOpcode opcode = getOpcode();
 		if (opcode == EVMOpcode::UNKNOWN)
 		{
-			m_error = EVMDisasmStatus::OPCODE_PARSING_ERROR;
+			m_error = ESETVMStatus::OPCODE_PARSING_ERROR;
             return std::nullopt;
 		}
 		currentInstruction.opcode = opcode;
@@ -157,7 +157,7 @@ std::optional<std::vector<EVMInstruction>> EVMDisasm::parseInstructions()
             }
             else
 			{
-				m_error = EVMDisasmStatus::OPCODE_ARGUMENT_PARSING_ERROR;
+				m_error = ESETVMStatus::OPCODE_ARGUMENT_PARSING_ERROR;
                 return std::nullopt;
 			}
 			currentInstruction.arguments = arguments;
@@ -178,8 +178,7 @@ std::optional<std::vector<std::string>> EVMDisasm::convertInstructionsToSourceCo
 		{
 			if (const auto findIt = m_labelOffsets.find(it.offset); findIt != m_labelOffsets.cend())
 			{
-				ss << "sub_" << std::hex << it.offset << ":";
-				ss << std::dec;
+				ss << "sub_" << std::hex << it.offset << ":" << std::dec;
 				sourceCodeLines.push_back(ss.str());
 				std::stringstream().swap(ss); // empty ss
 			}
@@ -193,13 +192,11 @@ std::optional<std::vector<std::string>> EVMDisasm::convertInstructionsToSourceCo
 		{
 			if (argument.type == ArgumentType::CONSTANT)
 			{
-				ss << std::hex << "0x" << argument.data.constant;
-				ss << std::dec;
+				ss << std::hex << "0x" << argument.data.constant << std::dec;
 			}
 			else if (argument.type == ArgumentType::ADDRESS)
 			{
-				ss << "sub_" << std::hex << argument.data.codeAddress;
-				ss << std::dec;
+				ss << "sub_" << std::hex << argument.data.codeAddress << std::dec;
 			}
 			else if (argument.type == ArgumentType::DATA_ACCESS)
 			{

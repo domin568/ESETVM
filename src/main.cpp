@@ -1,5 +1,5 @@
-#include "ESETVM.h"
 #include "CLIArgParser.h"
+#include "ESETVM.h"
 
 int main (int argc, char** argv)
 {
@@ -7,25 +7,28 @@ int main (int argc, char** argv)
 	if (cliParser.parseArguments())
 	{
 		cmdLineFlags cliFlags = cliParser.getFlags();
-		ESETVM evm {cliParser.getInputPath(), cliParser.getOutpuPath(), cliFlags.verbose}; // outputPath empty if not set
-		if (evm.init() != ESETVMStatus::SUCCESS)
+		ESETVM evm {cliParser.getInputPath(), cliParser.getOutputPath(), cliFlags.verbose}; // outputPath empty if not set
+		ESETVMStatus initStatus = evm.init();
+		if (initStatus != ESETVMStatus::SUCCESS)
 		{
-			return 1;
+			return static_cast<int>(initStatus);
 		}
 		if (cliFlags.disassemble)
 		{
-			if (evm.saveSourceCode() != ESETVMStatus::SUCCESS)
+			ESETVMStatus saveSrcStatus = evm.saveSourceCode();
+			if (saveSrcStatus != ESETVMStatus::SUCCESS)
 			{
-				return 2;
+				return static_cast<int>(saveSrcStatus);
 			}
 		}
 		else if (cliFlags.run)
 		{
-			if (evm.run(cliParser.getBinaryFilePath()) != ESETVMStatus::SUCCESS)
+			ESETVMStatus runStatus = evm.run(cliParser.getBinaryFilePath());
+			if (runStatus != ESETVMStatus::SUCCESS)
 			{
-				return 3;
+				return static_cast<int>(runStatus);
 			}
 		}
 	}
-	return 0;
+	return static_cast<int>(ESETVMStatus::CLI_ARG_PARSING_ERROR);
 }

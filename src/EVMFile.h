@@ -1,24 +1,16 @@
 #pragma once
-#include "utils.h"
-#include <inttypes.h>
-#include <fstream>
-#include <vector>
 
-enum class EVMFileStatus
-{
-	SUCCESS,
-	FILE_OPEN_ERROR,
-	FILE_READ_ERROR,
-	NOT_EVM_FILE,
-	FILE_CORRUPTED,
-	FILE_TOO_BIG
-};
+#include "EVMTypes.h"
+#include "utils.h"
+#include <fstream>
+#include <inttypes.h>
+#include <vector>
 
 class EVMFile
 {
 private:
 	static constexpr char EVM_Magic[] = "ESET-VM2";
-	static constexpr long long Max_Input_File_Size = 256LLU * 1024ULL * 1024ULL; // 256 MB
+	static constexpr long long Max_Input_File_Size = 256ULL * 1024ULL * 1024ULL; // 256 MB
 
 #pragma pack(1)
 	struct EVMHeader
@@ -33,17 +25,17 @@ private:
 	std::ifstream m_fileHandle {};
 	std::streamsize m_fileSize {};
 	EVMHeader m_header{};
-	EVMFileStatus m_error {EVMFileStatus::SUCCESS};
+	ESETVMStatus m_error {ESETVMStatus::SUCCESS};
 	std::vector<std::byte> m_codeBytes {};
 	std::vector<std::byte> m_dataBytes {};
 
 	bool parseFile();
 public:
-	EVMFile(){};
+	EVMFile() = default;
 	EVMFile(std::string filePath);
 	void init(std::string filePath);
 
-	EVMFileStatus getError() const { return m_error; }
+	ESETVMStatus getError() const { return m_error; }
 	std::vector<std::byte> getCodeBytes() const { return m_codeBytes; }
 	std::vector<std::byte> getDataBytes() const { return m_dataBytes; }
 	uint32_t getInitialDataSize() const { return m_header.initialDataSize; }

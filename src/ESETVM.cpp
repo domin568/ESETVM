@@ -9,10 +9,10 @@ m_verbose(verbose)
 
 ESETVMStatus ESETVM::init()
 {
-	if (m_file.getError() != EVMFileStatus::SUCCESS)
+	if (m_file.getError() != ESETVMStatus::SUCCESS)
 	{
 		std::cerr << "Input file error" << std::endl;
-		return ESETVMStatus::INPUT_FILE_PARSING_ERROR;
+		return m_file.getError();
 	}
 	std::vector<std::byte> codeBytes = m_file.getCodeBytes();
 	m_disasm.init(codeBytes);
@@ -23,7 +23,7 @@ ESETVMStatus ESETVM::init()
 	else
 	{
 		std::cerr << "Instruction parsing error" << std::endl;
-		return ESETVMStatus::DEASSEMBLE_ERROR;
+		return m_disasm.getError();
 	}
 	return ESETVMStatus::SUCCESS;
 }
@@ -35,7 +35,7 @@ bool ESETVM::writeSourceCode(std::vector<std::string>& sourceCodeLines)
 	{
 		outputFile << ".data" << std::endl << std::endl;
 		std::vector<std::byte> dataBytes = m_file.getDataBytes();
-		outputFile << utils::byteArrayToHexString(dataBytes, 40);
+		outputFile << utils::byteArrayToHexString(dataBytes, Data_HexDump_Width);
 		outputFile << std::endl << std::endl;
 	}
 	outputFile << ".code" << std::endl << std::endl;
@@ -69,9 +69,9 @@ ESETVMStatus ESETVM::saveSourceCode()
 	}
 	return ESETVMStatus::SUCCESS;
 }
-ESETVMStatus ESETVM::run(const std::string& binaryFile)
+ESETVMStatus ESETVM::run(const std::string& binaryFile, std::optional<size_t> maxEmulatedInstructionCount)
 {
-	std::vector<std::byte> initialDataBytes = m_file.getDataBytes();
+	const std::vector<std::byte>& initialDataBytes = m_file.getDataBytes();
 	std::vector<uint8_t> memory {};
 	memory.resize(m_file.getDataSize());
 	if (initialDataBytes.size() > 0)
@@ -83,6 +83,8 @@ ESETVMStatus ESETVM::run(const std::string& binaryFile)
 	std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>> mutices {};
 	m_disasm.convertInstructionsToSourceCode(m_instructions, false);
 	
-	EVMExecutionUnit mainThread {m_instructions, memory, m_disasm, mainThreadContext, mutices, binaryFile, m_verbose};
-	return mainThread.run();
+	std::atomic<size_t> instructionCounter {};
+	EVMExecutionUnit mainThread {m_instructions, memory, m_disasm, mainThreadContext, mutices, binaryFile, m_verbose, maxEmulatedInstructionCount, instructionCounter};
+	ESETVMStatus status = mainThread.run();
+	return status;
 }

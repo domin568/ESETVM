@@ -1,27 +1,19 @@
 #pragma once
-#include "utils.h"
 #include "BitStreamReader.h"
 #include "EVMTypes.h"
+#include "utils.h"
 #include <inttypes.h>
-#include <vector>
 #include <map>
-#include <sstream>
 #include <optional>
 #include <set>
-
-enum class EVMDisasmStatus
-{
-	SUCCESS,
-	OPCODE_PARSING_ERROR,
-	OPCODE_ARGUMENT_PARSING_ERROR,
-	INSTRUCTIONS_TO_SOURCE_CODE_ERROR
-};
+#include <sstream>
+#include <vector>
 
 class EVMDisasm
 {
 private:
 	BitStreamReader m_bitStreamReader {};
-	EVMDisasmStatus m_error {EVMDisasmStatus::SUCCESS};
+	ESETVMStatus m_error {ESETVMStatus::SUCCESS};
 
 	std::vector<EVMInstruction> m_instructions {};
 	std::vector<std::string> m_sourceCodeLines {};
@@ -138,10 +130,10 @@ private:
 	std::optional<std::vector<EVMArgument>> readArguments(const std::vector<ArgumentType>& argumentLayout);
 	
 public:
-	EVMDisasm(){};
+	EVMDisasm() = default;
 	EVMDisasm(const std::vector<std::byte>& input);
 	void init(const std::vector<std::byte>& input);
-	EVMDisasmStatus getError() const { return m_error; };
+	ESETVMStatus getError() const { return m_error; };
 	std::optional<std::vector<EVMInstruction>> parseInstructions();
 	std::optional<std::vector<std::string>> convertInstructionsToSourceCode(std::vector<EVMInstruction>& instructions, bool labels = true);
 	std::vector<std::string> getSourceCodeLines() { return m_sourceCodeLines; }

@@ -1,10 +1,10 @@
 #pragma once
 #include "utils.h"
+#include <algorithm>
+#include <bitset>
 #include <inttypes.h>
 #include <string>
 #include <vector>
-#include <algorithm>
-#include <bitset>
 
 enum class BitStreamReaderSeekStrategy
 {
@@ -45,7 +45,7 @@ private:
 	}
 	
 public:
-	BitStreamReader(){};
+	BitStreamReader() = default;
 	BitStreamReader(const std::vector<std::byte>& inputData);
 	void init(const std::vector<std::byte>& inputData);
 	bool seek(size_t offset, BitStreamReaderSeekStrategy strategy = BitStreamReaderSeekStrategy::CUR);

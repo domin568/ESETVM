@@ -1,5 +1,11 @@
 #pragma once
 
+#include <inttypes.h>
+#include <stack>
+#include <vector>
+
+using bitSequenceInteger = uint8_t;
+
 enum class EVMOpcode
 {
 	UNKNOWN,
@@ -34,11 +40,6 @@ enum class MemoryAccessSize
 	DWORD = 4,
 	QWORD = 8
 };
-enum class DataAccessPurpose
-{
-	READ,
-	WRITE
-};
 enum class DataAccessType
 {
 	REGISTER,
@@ -49,7 +50,6 @@ struct DataAccess
 	DataAccessType type;
 	MemoryAccessSize accessSize;
 	uint8_t registerIndex;
-	DataAccessPurpose purpose;
 };
 enum class ArgumentType
 {
@@ -73,18 +73,30 @@ struct EVMInstruction
 	uint32_t offset; // code adresses are 32 bits
 	std::vector<EVMArgument> arguments;
 };
-
 enum class ESETVMStatus
 {
-	SUCCESS,
-	INPUT_FILE_PARSING_ERROR,
-	DEASSEMBLE_ERROR,
-	PRODUCE_SOURCE_CODE_ERROR,
-	SOURCE_CODE_WRITE_ERROR,
-	EMULATION_ERROR,
-	EMULATION_INS_NUM_EXCEEDED,
-	EXECUTION_ERROR,
-	FETCH_ERROR,
+	CLI_ARG_PARSING_ERROR = -1,
+	SUCCESS = 0,
+	DISASSEMBLE_ERROR = 1,
+	PRODUCE_SOURCE_CODE_ERROR = 2,
+	SOURCE_CODE_WRITE_ERROR = 3,
+	EMULATION_ERROR = 4,
+	EMULATION_INS_NUM_EXCEEDED = 5,
+	EXECUTION_ERROR = 6,
+	FETCH_ERROR = 7,
+	FILE_OPEN_ERROR = 8,
+	FILE_READ_ERROR = 9,
+	NOT_EVM_FILE = 10,
+	FILE_CORRUPTED = 11,
+	FILE_TOO_BIG = 12,
+	OPCODE_PARSING_ERROR = 13,
+	OPCODE_ARGUMENT_PARSING_ERROR = 14,
+	INSTRUCTIONS_TO_SOURCE_CODE_ERROR = 15
 };
-
-using bitSequenceInteger = uint8_t;
+struct EVMContext
+{
+	std::vector<int64_t> registers;
+	size_t ip;
+	std::stack<size_t> callStack;
+	EVMContext(size_t registerCount): registers{}, ip{0}, callStack{}{ registers.resize(registerCount); }
+};

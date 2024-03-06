@@ -10,19 +10,6 @@ namespace utils
 		fileHandle.seekg(0, std::ios_base::beg);
 		return length;
 	}
-	std::string convertToBitStream(const std::vector<std::byte>& bytes)
-	{
-		std::string bitStream;
-		bitStream.reserve(bytes.size() * 8);
-		for (const auto& it : bytes)
-		{
-			for (int bit = 7; bit >= 0; --bit)
-			{
-				bitStream.push_back((static_cast<uint8_t>(it) & (1 << bit)) ? '1' : '0');
-			}
-		}
-		return bitStream;
-	}
 	std::string byteArrayToHexString(const std::vector<std::byte>& byteArray, uint32_t width)
 	{
 		std::stringstream ss;

@@ -7,9 +7,12 @@ std::mutex EVMExecutionUnit::consoleReadMutex;
 std::mutex EVMExecutionUnit::consoleWriteMutex;
 std::mutex EVMExecutionUnit::verboseMutex;
 std::mutex EVMExecutionUnit::muticesMutex;
-std::atomic<size_t> EVMExecutionUnit::emulatedInstructionCount;
+std::mutex EVMExecutionUnit::interruptMutex;
+std::atomic<bool> EVMExecutionUnit::interrupt = false;
 
-EVMExecutionUnit::EVMExecutionUnit(const std::vector<EVMInstruction>& instructions, std::vector<uint8_t>& memory, const EVMDisasm& disasm, EVMContext context, std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>>& mutices, const std::string& binaryFile, bool verbose):
+EVMExecutionUnit::EVMExecutionUnit(const std::vector<EVMInstruction>& instructions, std::vector<uint8_t>& memory, const EVMDisasm& disasm, EVMContext context, std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>>& mutices, const std::string& binaryFile, bool verbose, std::optional<size_t> maxEmulatedInstructionCount, std::atomic<size_t>& emulatedInstructionCount):
+m_maxEmulatedInstructionCount(maxEmulatedInstructionCount),
+m_emulatedInstructionCount(emulatedInstructionCount),
 m_threadContext(context),
 m_running(true),
 m_verbose(verbose),
@@ -20,6 +23,26 @@ m_binaryFilePath(binaryFile),
 m_mutices(mutices)
 {
 	m_threadContext.registers.resize(16);
+}
+EVMExecutionUnit::~EVMExecutionUnit()
+{
+	{
+		std::unique_lock l {unlockMutex};
+		for (auto t : m_mutices)
+		{
+			t.second->unlock();
+		}
+	}
+	{
+		std::unique_lock l {joinMutex};
+		for (auto& t : m_threads)
+		{
+			if (t.second.joinable())
+			{
+				t.second.join();
+			}
+		}
+	}
 }
 std::optional<EVMInstruction> EVMExecutionUnit::fetchInstruction()
 {
@@ -58,6 +81,14 @@ ESETVMStatus EVMExecutionUnit::run()
 			printCrashInfo(instructionResult.value());
 			return ESETVMStatus::EXECUTION_ERROR;
 		}
+		if (m_maxEmulatedInstructionCount.has_value())
+		{
+			m_emulatedInstructionCount++;
+			if (m_emulatedInstructionCount > m_maxEmulatedInstructionCount.value())
+			{
+				return ESETVMStatus::EMULATION_INS_NUM_EXCEEDED;
+			}
+		}
 	}
 	return ESETVMStatus::SUCCESS;
 }
@@ -73,12 +104,8 @@ std::optional<registerIntegerType> EVMExecutionUnit::readIntegerFromAddress(cons
 std::optional<registerIntegerType> EVMExecutionUnit::getDataAccess(const DataAccess& da, const std::vector<registerIntegerType>& registers)
 {
 	registerIntegerType regVal {};
-	if (da.registerIndex >= registers.size())
-	{
-		return std::nullopt;
-	}
 	regVal = registers[da.registerIndex];
-	
+
 	if (da.type == DataAccessType::REGISTER)
 	{
 		return regVal;
@@ -94,28 +121,24 @@ std::optional<registerIntegerType> EVMExecutionUnit::getDataAccess(const DataAcc
 }
 bool EVMExecutionUnit::saveDataAccess(registerIntegerType val, const DataAccess& da, std::vector<registerIntegerType>& registers, std::vector<uint8_t>& memory)
 {
-	if (da.registerIndex < registers.size())
+	registerIntegerType& regVal = registers.at(da.registerIndex);
+	if (da.type == DataAccessType::REGISTER)
 	{
-		registerIntegerType& regVal = registers.at(da.registerIndex);
-		if (da.type == DataAccessType::REGISTER)
-		{
-			regVal = val;
-			return true;
-		}
-		else if (da.type == DataAccessType::DEREFERENCE)
-		{
-			std::unique_lock l {writeMemoryMutex};
+		regVal = val;
+		return true;
+	}
+	else if (da.type == DataAccessType::DEREFERENCE)
+	{
+		std::unique_lock l {writeMemoryMutex};
 			
-			size_t accessSize = static_cast<size_t>(da.accessSize);
-			if (regVal > memory.size() - accessSize)
-			{
-				return false;
-			}
-			std::vector<uint8_t> data = utils::convertIntegerToBytes(val, accessSize);
-			std::reverse(data.begin(), data.end()); // BE -> LE
-			std::copy(data.cbegin(), data.cend(), memory.begin() + regVal);
-			return true;
+		size_t accessSize = static_cast<size_t>(da.accessSize);
+		if (regVal > memory.size() - accessSize)
+		{
+			return false;
 		}
+		std::vector<uint8_t> data = utils::convertIntegerToBytes(val, accessSize);
+		std::copy(data.cbegin(), data.cend(), memory.begin() + regVal);
+		return true;
 	}
 	return false;
 }
@@ -133,8 +156,7 @@ void EVMExecutionUnit::printCrashInfo (const EVMInstruction& instruction)
 	std::cerr << srcLine.value() << std::endl;
 	for (size_t regIter = 0; regIter <m_threadContext.registers.size(); regIter++)
 	{
-		std::cerr << "R" << regIter << "= " << std::hex << std::setfill('0') << std::setw(sizeof(registerIntegerType) * 2) << m_threadContext.registers.at(regIter) << std::endl;
-		std::cerr << std::dec;
+		std::cerr << "R" << regIter << "= " << std::hex << std::setfill('0') << std::setw(sizeof(registerIntegerType) * 2) << m_threadContext.registers.at(regIter) << std::endl << std::dec;
 	}
 }
 bool EVMExecutionUnit::executeInstruction(const EVMInstruction& instruction)
@@ -331,7 +353,6 @@ bool EVMExecutionUnit::loadConst(const EVMInstruction& instruction)
 }
 bool EVMExecutionUnit::performArithmeticOperation(const EVMInstruction& instruction)
 {
-
 	// use pointers to make it faster?
 	std::vector<DataAccess> daArgs;
 	std::transform(instruction.arguments.cbegin(), instruction.arguments.cend(), std::back_inserter(daArgs), [](EVMArgument arg){ return arg.data.dataAccess; });
@@ -559,7 +580,7 @@ bool EVMExecutionUnit::consoleWrite(const EVMInstruction& instruction)
 	}
 	registerIntegerType val = daResult.value();
 	
-	std::cout << std::hex << std::setfill('0') << std::setw(sizeof(val) * 2) << daResult.value() << std::endl;
+	std::cout << std::hex << std::setfill('0') << std::setw(sizeof(val) * 2) << daResult.value() << std::endl << std::dec;
 	return true;
 }
 bool EVMExecutionUnit::createThread(const EVMInstruction& instruction)
@@ -579,7 +600,7 @@ bool EVMExecutionUnit::createThread(const EVMInstruction& instruction)
 	{
 		EVMContext newContext {m_threadContext};
 		newContext.ip = insNum.value();
-		EVMExecutionUnit executionUnit {m_instructions, m_memory, m_disasm, newContext, m_mutices, m_binaryFilePath, m_verbose};
+		EVMExecutionUnit executionUnit {m_instructions, m_memory, m_disasm, newContext, m_mutices, m_binaryFilePath, m_verbose, m_maxEmulatedInstructionCount, m_emulatedInstructionCount};
 		initPromise.set_value();
 		executionUnit.run();
 	});
@@ -594,6 +615,7 @@ bool EVMExecutionUnit::createThread(const EVMInstruction& instruction)
 }
 bool EVMExecutionUnit::joinThread(const EVMInstruction& instruction)
 {
+	std::unique_lock l {joinMutex};
 	DataAccess da = instruction.arguments.at(0).data.dataAccess;
 	const auto threadId = getDataAccess(da, m_threadContext.registers);
 	if (!threadId.has_value())
@@ -625,7 +647,7 @@ bool EVMExecutionUnit::sleep(const EVMInstruction& instruction)
 }
 std::optional<size_t> EVMExecutionUnit::call(const EVMInstruction &instruction)
 {
-	if (m_threadContext.ip + 1 >= m_instructions.size())
+	if (m_threadContext.ip + 1 > m_instructions.size())
 	{
 		return std::nullopt;
 	}
@@ -639,6 +661,10 @@ std::optional<size_t> EVMExecutionUnit::call(const EVMInstruction &instruction)
 }
 std::optional<size_t> EVMExecutionUnit::ret(const EVMInstruction &instruction)
 {
+	if (m_threadContext.callStack.size() == 0)
+	{
+		return std::nullopt;
+	}
 	size_t retInsOff = m_threadContext.callStack.top();
 	m_threadContext.callStack.pop();
 	if (retInsOff >= m_instructions.size())
@@ -655,7 +681,7 @@ bool EVMExecutionUnit::lock(const EVMInstruction &instruction)
 	{
 		return false;
 	}
-	
+
 	if (m_mutices.contains(mutexObj.value()))
 	{
 		auto mutex = m_mutices.at(mutexObj.value());
@@ -672,6 +698,7 @@ bool EVMExecutionUnit::lock(const EVMInstruction &instruction)
 }
 bool EVMExecutionUnit::unlock(const EVMInstruction &instruction)
 {
+	std::unique_lock l {unlockMutex};
 	DataAccess da = instruction.arguments.at(0).data.dataAccess;
 	const auto mutexObj = getDataAccess(da, m_threadContext.registers);
 	if (!mutexObj.has_value())

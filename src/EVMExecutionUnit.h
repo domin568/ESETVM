@@ -5,23 +5,16 @@
 #include "EVMTypes.h"
 #include <chrono>
 #include <future>
-#include <vector>
-#include <inttypes.h>
 #include <iostream>
+#include <inttypes.h>
 #include <map>
 #include <ranges>
 #include <stack>
 #include <thread>
+#include <vector>
 
 using registerIntegerType = int64_t;
 
-struct EVMContext
-{
-	std::vector<int64_t> registers;
-	size_t ip;
-	std::stack<size_t> callStack;
-	EVMContext(size_t registerCount): registers{}, ip{0}, callStack{}{registers.resize(registerCount);}
-};
 class EVMExecutionUnit
 {
 private:
@@ -32,9 +25,14 @@ private:
 	static std::mutex consoleWriteMutex;
 	static std::mutex verboseMutex;
 	static std::mutex muticesMutex;
-	static std::atomic<size_t> emulatedInstructionCount;
+	static std::mutex interruptMutex;
+	static std::atomic<bool> interrupt;
+	
+	std::mutex unlockMutex {};
+	std::mutex joinMutex {};
 	
 	std::optional<size_t> m_maxEmulatedInstructionCount{};
+	std::atomic<size_t>& m_emulatedInstructionCount;
 	
 	EVMContext m_threadContext;
 	
@@ -75,7 +73,8 @@ private:
 	bool unlock (const EVMInstruction& instruction);
 	
 public:
-	EVMExecutionUnit(const std::vector<EVMInstruction>& instructions, std::vector<uint8_t>& memory, const EVMDisasm& disasm, EVMContext context, std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>>& mutices, const std::string& binaryFile, bool verbose);
+	EVMExecutionUnit(const std::vector<EVMInstruction>& instructions, std::vector<uint8_t>& memory, const EVMDisasm& disasm, EVMContext context, std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>>& mutices, const std::string& binaryFile, bool verbose, std::optional<size_t> maxEmulatedInstructionCount, std::atomic<size_t>& emulatedInstructionCount);
+	~EVMExecutionUnit();
 	ESETVMStatus run();
 };
 

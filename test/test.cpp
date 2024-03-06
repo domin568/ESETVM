@@ -516,7 +516,7 @@ TEST(BitStreamReaderTest, CrcTest)
 TEST(DisassembleTest, InstructionParsingCrcTest)
 {
 	EVMDisasm disasm(crcCodeFull);
-	EXPECT_EQ(disasm.getError(), EVMDisasmStatus::SUCCESS);
+	EXPECT_EQ(disasm.getError(), ESETVMStatus::SUCCESS);
 	std::vector<EVMInstruction> instructions;
     const auto instructionParsing = disasm.parseInstructions();
     if (instructionParsing.has_value())
@@ -555,7 +555,7 @@ TEST(CliTest, CliArguments)
 	EXPECT_TRUE(parse3.parseArguments());
 	EXPECT_TRUE(parse3.getFlags().disassemble);
 	EXPECT_EQ(parse3.getInputPath(), inputPath1);
-	EXPECT_EQ(parse3.getOutpuPath(),"output_file.txt");
+	EXPECT_EQ(parse3.getOutputPath(),"output_file.txt");
 	
 	argc = 3;
 	const char* argv4[3] {"","-r","output_file.txt"};
@@ -681,66 +681,115 @@ std::optional<std::string> getOutputEmulation(std::string path, const std::vecto
 
 TEST (EmulationTest, Math)
 {
+	auto start = std::chrono::high_resolution_clock::now();
+	
 	std::string mathEvm = testPath + "/samples/precompiled/math.evm";
 	const auto mathResult = getOutputEmulation(mathEvm, {""}, false);
 	EXPECT_TRUE(mathResult.has_value());
 	EXPECT_EQ(mathResult.value(), "0000000000000118\n00000000000000e8\n000000000000000a\n0000000000000010\n0000000000001800\n0000000000000001\n");
+	
+	auto end = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "Execution time: " << duration.count() << " us" << std::endl;
 }
 TEST (EmulationTest, Fibonacci)
 {
+	auto start = std::chrono::high_resolution_clock::now();
+	
 	std::string fibonacciEvm = testPath + "/samples/precompiled/fibonacci_loop.evm";
 	const auto fibonacciResult = getOutputEmulation(fibonacciEvm, {"5"}, false);
 	EXPECT_TRUE(fibonacciResult.has_value());
 	EXPECT_EQ(fibonacciResult.value(), "0000000000000001\n0000000000000001\n0000000000000002\n0000000000000003\n0000000000000005\n"); // not valid fibonacci sequence
+	
+	auto end = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "Execution time: " << duration.count() << " us" << std::endl;
 }
 TEST (EmulationTest, Memory)
 {
+	auto start = std::chrono::high_resolution_clock::now();
+	
 	std::string memoryEvm = testPath + "/samples/precompiled/memory.evm";
 	const auto memoryResult = getOutputEmulation(memoryEvm, {""}, false);
 	EXPECT_TRUE(memoryResult.has_value());
 	EXPECT_EQ(memoryResult.value(),  "0123456789abcdef\n0000000089abcdef\n000000000000cdef\n00000000000000ef\n0000000001234567\n0000000001234567\n0000000000004567\n0000000000000067\n0000000000000000\n0000000000000000\n0000000000000000\n0000000000000000\n");
+	
+	auto end = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "Execution time: " << duration.count() << " us" << std::endl;
 }
 TEST (EmulationTest, Xor)
 {
+	auto start = std::chrono::high_resolution_clock::now();
+	
 	std::string xorEvm = testPath + "/samples/precompiled/xor.evm";
 	const auto xorResult = getOutputEmulation(xorEvm, {"123456", "98765"}, false);
 	EXPECT_TRUE(xorResult.has_value());
 	EXPECT_EQ(xorResult.value(), "00000000001bb333\n");
+	
+	auto end = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "Execution time: " << duration.count() << " us" << std::endl;
 }
 TEST (EmulationTest, XorWithStackFrame)
 {
+	auto start = std::chrono::high_resolution_clock::now();
+	
 	std::string xorWithStackFrameEvm = testPath + "/samples/precompiled/xor-with-stack-frame.evm";
 	const auto xorWithStackFrameResult = getOutputEmulation(xorWithStackFrameEvm, {"123456", "98765"}, false);
 	EXPECT_TRUE(xorWithStackFrameResult.has_value());
 	EXPECT_EQ(xorWithStackFrameResult.value(), "00000000001bb333\n");
+	
+	auto end = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "Execution time: " << duration.count() << " us" << std::endl;
 }
 TEST (EmulationTest, Crc)
 {
+	auto start = std::chrono::high_resolution_clock::now();
+	
 	std::string crcEvm = testPath + "/samples/precompiled/crc.evm";
 	std::string crcBin = testPath + "/samples/crc.bin";
 	const auto crcResult = getOutputEmulation(crcEvm, {""}, false, crcBin);
 	EXPECT_TRUE(crcResult.has_value());
 	EXPECT_EQ(crcResult.value(), "000000008407759b\n");
+	
+	auto end = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "Execution time: " << duration.count() << " us" << std::endl;
 }
 TEST (EmulationTest, ThreadingBase)
 {
+	auto start = std::chrono::high_resolution_clock::now();
+	
 	std::string threadingBaseEvm = testPath + "/samples/precompiled/threadingBase.evm";
 	const auto threadingBaseResult = getOutputEmulation(threadingBaseEvm, {""}, false);
 	EXPECT_TRUE(threadingBaseResult.has_value());
 	EXPECT_EQ(threadingBaseResult.value(), "0123456789abcdef\n");
+	
+	auto end = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "Execution time: " << duration.count() << " us" << std::endl;
 }
 TEST (EmulationTest, Lock)
 {
+	auto start = std::chrono::high_resolution_clock::now();
+	
 	std::string lockEvm = testPath + "/samples/precompiled/lock.evm";
 	const auto lockResult = getOutputEmulation(lockEvm, {""}, false);
 	EXPECT_TRUE(lockResult.has_value());
 	EXPECT_EQ(lockResult.value(), "0000000000000300\n");
+	
+	auto end = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "Execution time: " << duration.count() << " us" << std::endl;
 }
 TEST (EmulationTest, MultiThreadedFileWrite)
 {
+	auto start = std::chrono::high_resolution_clock::now();
+	
 	std::string multiThreadedFileWriteEvm = testPath + "/samples/precompiled/multithreaded_file_write.evm";
 	std::string multiThreadedFileWriteBin = testPath + "/samples/multithreaded_file_write.bin";
-	
 	
 	std::ifstream fInBefore {multiThreadedFileWriteBin, std::ios::in | std::ios::binary};
 	EXPECT_TRUE(fInBefore.is_open());
@@ -774,28 +823,18 @@ TEST (EmulationTest, MultiThreadedFileWrite)
 	fOriginalFileRestore.close();
 	
 	EXPECT_TRUE(std::equal(fileContentsBefore.cbegin(), fileContentsBefore.cend(), fileContentsAfter.cbegin(), fileContentsAfter.cend()));
+	
+	auto end = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "Execution time: " << duration.count() << " us" << std::endl;
 }
-/*
 TEST (EmulationTest, PseudoRandom)
 {
-	// hard to test it properly due to random input time
 	std::string pseudoRandomEvm = testPath + "/samples/precompiled/pseudorandom.evm";
-	
-	const auto pseudorandomResult1 = getOutputEmulation(pseudoRandomEvm, {"123"}, false);
-	std::this_thread::sleep_for(std::chrono::milliseconds(50));
-	const auto pseudorandomResult2 = getOutputEmulation(pseudoRandomEvm, {"321"}, false);
-	std::this_thread::sleep_for(std::chrono::milliseconds(50));
-	const auto pseudorandomResult3 = getOutputEmulation(pseudoRandomEvm, {"5435663"}, false);
-	
-	EXPECT_TRUE(pseudorandomResult1.has_value());
-	EXPECT_TRUE(pseudorandomResult2.has_value());
-	EXPECT_TRUE(pseudorandomResult3.has_value());
-	auto& a = pseudorandomResult1.value(); auto& b = pseudorandomResult2.value(); auto& c = pseudorandomResult3.value();
-	std::cout << a << " " << b << " " << c << std::endl;
-	EXPECT_TRUE(a != b && b != c && a != c);
+	const auto pseudorandomResult = getOutputEmulation(pseudoRandomEvm, {"123"}, false);
+	EXPECT_TRUE(pseudorandomResult.has_value());
+	EXPECT_TRUE(pseudorandomResult.value().size() == 17);
 }
- */
-/*
 TEST (EmulationTest, Philosophers)
 {
 	std::string philosophersEvm = testPath + "/samples/precompiled/philosophers.evm";
@@ -803,11 +842,11 @@ TEST (EmulationTest, Philosophers)
 	std::istringstream inputStream("5");
 	std::streambuf* cinbuf = std::cin.rdbuf();
 	std::cin.rdbuf(inputStream.rdbuf());
+	std::cout.rdbuf(nullptr);
 	
 	ESETVM evm {philosophersEvm, "", false};
 	EXPECT_EQ(evm.init(), ESETVMStatus::SUCCESS);
-	EXPECT_EQ(evm.run(""), ESETVMStatus::EMULATION_INS_NUM_EXCEEDED);
+	EXPECT_EQ(evm.run("", 1000), ESETVMStatus::EMULATION_INS_NUM_EXCEEDED);
 	
 	std::cin.rdbuf(cinbuf);
 }
-*/

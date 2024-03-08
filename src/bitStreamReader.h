@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <bitset>
 #include <inttypes.h>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -50,7 +51,7 @@ public:
 	void init(const std::vector<std::byte>& inputData);
 	bool seek(size_t offset, BitStreamReaderSeekStrategy strategy = BitStreamReaderSeekStrategy::CUR);
 	std::optional<std::vector<bool>> readBits(size_t count, bool movePointer = true);
-	uint64_t getStreamSize() { return m_bitStream.size(); }
+	uint64_t getStreamSize() const { return m_bitStream.size(); }
 	uint64_t getStreamPosition() const { return m_bitStreamPosition; }
 	
 	template <typename T>

@@ -7,8 +7,6 @@
 #include <future>
 #include <iostream>
 #include <inttypes.h>
-#include <map>
-#include <ranges>
 #include <stack>
 #include <thread>
 #include <vector>
@@ -49,10 +47,10 @@ private:
 	
 	std::optional<EVMInstruction> fetchInstruction();
 	bool executeInstruction(const EVMInstruction& instruction);
-	std::optional<registerIntegerType> readIntegerFromAddress(registerIntegerType address, MemoryAccessSize size);
+	std::optional<registerIntegerType> readIntegerFromAddress(size_t address, MemoryAccessSize size);
 	std::optional<registerIntegerType> getDataAccess(const DataAccess& da, const std::vector<registerIntegerType>& registers);
 	bool saveDataAccess(registerIntegerType val, const DataAccess& da, std::vector<registerIntegerType>& registers, std::vector<uint8_t>& memory);
-	void printCrashInfo (const EVMInstruction& instruction);
+	void printCrashInfo ();
 	
 	bool mov (const EVMInstruction& instruction);
 	bool loadConst (const EVMInstruction& instruction);
@@ -68,7 +66,7 @@ private:
 	bool joinThread (const EVMInstruction& instruction);
 	bool sleep (const EVMInstruction& instruction);
 	std::optional<size_t> call (const EVMInstruction& instruction);
-	std::optional<size_t> ret (const EVMInstruction& instruction);
+	std::optional<size_t> ret ();
 	bool lock (const EVMInstruction& instruction);
 	bool unlock (const EVMInstruction& instruction);
 	

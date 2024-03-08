@@ -442,8 +442,8 @@ bool areInstructionsEqual(const std::vector<EVMInstruction>& vec1, const std::ve
 void initializeCrcInstructionsTest()
 {
 	EVMInstruction i1{}; i1.opcode = EVMOpcode::LOADCONST;
-	EVMArgument const1; const1.type = ArgumentType::CONSTANT; const1.data.constant = static_cast<int64_t>(10000); i1.arguments.push_back(const1);
-	EVMArgument arg1; arg1.type = ArgumentType::DATA_ACCESS;  arg1.data.dataAccess.type = DataAccessType::REGISTER; arg1.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1.data.dataAccess.registerIndex = 14; i1.arguments.push_back(arg1);
+	EVMArgument const1{}; const1.type = ArgumentType::CONSTANT; const1.data.constant = static_cast<int64_t>(10000); i1.arguments.push_back(const1);
+	EVMArgument arg1{}; arg1.type = ArgumentType::DATA_ACCESS;  arg1.data.dataAccess.type = DataAccessType::REGISTER; arg1.data.dataAccess.accessSize = MemoryAccessSize::NONE; arg1.data.dataAccess.registerIndex = 14; i1.arguments.push_back(arg1);
 	crcInstructionsTest.push_back(i1);
 
 	EVMInstruction i2{}; i2.opcode = EVMOpcode::LOADCONST;
@@ -635,6 +635,7 @@ TEST(DisassembleTest, DisassembleAllProvidedSamples)
 
 			std::vector<char> content1(std::istreambuf_iterator<char>(file1), {});
 			std::vector<char> content2(std::istreambuf_iterator<char>(file2), {});
+			EXPECT_TRUE(content1.size() == content2.size());
 			EXPECT_TRUE(std::equal(content1.begin(), content1.end(), content2.begin()));
 		}
 	}

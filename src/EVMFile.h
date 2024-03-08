@@ -23,7 +23,7 @@ private:
 #pragma pack()
 
 	std::ifstream m_fileHandle {};
-	std::streamsize m_fileSize {};
+	size_t m_fileSize {};
 	EVMHeader m_header{};
 	ESETVMStatus m_error {ESETVMStatus::SUCCESS};
 	std::vector<std::byte> m_codeBytes {};

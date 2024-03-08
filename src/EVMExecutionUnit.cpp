@@ -28,7 +28,7 @@ EVMExecutionUnit::~EVMExecutionUnit()
 {
 	{
 		std::unique_lock l {unlockMutex};
-		for (auto t : m_mutices)
+		for (auto& t : m_mutices)
 		{
 			t.second->unlock();
 		}
@@ -78,7 +78,7 @@ ESETVMStatus EVMExecutionUnit::run()
 		}
 		if (!executeInstruction(instructionResult.value()))
 		{
-			printCrashInfo(instructionResult.value());
+			printCrashInfo();
 			return ESETVMStatus::EXECUTION_ERROR;
 		}
 		if (m_maxEmulatedInstructionCount.has_value())
@@ -92,7 +92,7 @@ ESETVMStatus EVMExecutionUnit::run()
 	}
 	return ESETVMStatus::SUCCESS;
 }
-std::optional<registerIntegerType> EVMExecutionUnit::readIntegerFromAddress(const registerIntegerType address, const MemoryAccessSize size)
+std::optional<registerIntegerType> EVMExecutionUnit::readIntegerFromAddress(const size_t address, const MemoryAccessSize size)
 {
 	if (address >= m_memory.size())
 	{
@@ -132,7 +132,7 @@ bool EVMExecutionUnit::saveDataAccess(registerIntegerType val, const DataAccess&
 		std::unique_lock l {writeMemoryMutex};
 			
 		size_t accessSize = static_cast<size_t>(da.accessSize);
-		if (regVal > memory.size() - accessSize)
+		if (static_cast<size_t>(regVal) > memory.size() - accessSize)
 		{
 			return false;
 		}
@@ -142,7 +142,7 @@ bool EVMExecutionUnit::saveDataAccess(registerIntegerType val, const DataAccess&
 	}
 	return false;
 }
-void EVMExecutionUnit::printCrashInfo (const EVMInstruction& instruction)
+void EVMExecutionUnit::printCrashInfo ()
 {
 	std::unique_lock l {printCrashMutex};
 	
@@ -293,7 +293,7 @@ bool EVMExecutionUnit::executeInstruction(const EVMInstruction& instruction)
 		}
 		case EVMOpcode::RET:
 		{
-			const auto retResult = ret(instruction);
+			const auto retResult = ret();
 			if (!retResult.has_value())
 			{
 				return false;
@@ -495,7 +495,7 @@ bool EVMExecutionUnit::read (const EVMInstruction& instruction)
 		inputFile.close();
 		return false;
 	}
-	if (arg2.value() >= m_memory.size() - arg3.value())
+	if (static_cast<size_t>(arg2.value()) >= m_memory.size() - static_cast<size_t>(arg3.value()))
 	{
 		inputFile.close();
 		return false;
@@ -544,7 +544,7 @@ bool EVMExecutionUnit::write (const EVMInstruction& instruction)
 		outputFile.close();
 		return false;
 	}
-	if (arg2.value() >= m_memory.size() - arg3.value())
+	if (static_cast<size_t>(arg2.value()) >= m_memory.size() - static_cast<size_t>(arg3.value()))
 	{
 		outputFile.close();
 		return false;
@@ -659,7 +659,7 @@ std::optional<size_t> EVMExecutionUnit::call(const EVMInstruction &instruction)
 	m_threadContext.callStack.push(m_threadContext.ip + 1);
 	return jumpResult.value();
 }
-std::optional<size_t> EVMExecutionUnit::ret(const EVMInstruction &instruction)
+std::optional<size_t> EVMExecutionUnit::ret()
 {
 	if (m_threadContext.callStack.size() == 0)
 	{
@@ -684,7 +684,7 @@ bool EVMExecutionUnit::lock(const EVMInstruction &instruction)
 
 	if (m_mutices.contains(mutexObj.value()))
 	{
-		auto mutex = m_mutices.at(mutexObj.value());
+		auto& mutex = m_mutices.at(mutexObj.value());
 		mutex->lock();
 	}
 	else

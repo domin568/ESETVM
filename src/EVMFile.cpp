@@ -36,7 +36,7 @@ bool EVMFile::parseFile()
 		m_error = ESETVMStatus::NOT_EVM_FILE;
 		return false;
 	}
-	if (m_header.dataSize < m_header.initialDataSize || m_header.codeSize + m_header.initialDataSize + sizeof(m_header) != m_fileSize)
+	if (m_header.dataSize < m_header.initialDataSize || static_cast<size_t>(m_header.codeSize) + static_cast<size_t>(m_header.initialDataSize) + sizeof(m_header) != m_fileSize)
 	{
 		m_error = ESETVMStatus::FILE_CORRUPTED;
 		return false;

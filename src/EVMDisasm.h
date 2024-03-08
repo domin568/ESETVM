@@ -7,6 +7,7 @@
 #include <optional>
 #include <set>
 #include <sstream>
+#include <unordered_map>
 #include <vector>
 
 class EVMDisasm
@@ -125,7 +126,7 @@ private:
 		{MemoryAccessSize::DWORD, "dword"},
 		{MemoryAccessSize::QWORD, "qword"}
 	};
-	EVMOpcode checkOpcode(uint8_t opcodeSize);
+	EVMOpcode checkOpcode(size_t opcodeSize);
 	EVMOpcode getOpcode();
 	std::optional<std::vector<EVMArgument>> readArguments(const std::vector<ArgumentType>& argumentLayout);
 	

@@ -8,10 +8,10 @@ void BitStreamReader::init(const std::vector<std::byte>& inputData)
 {
 	for (const auto& byte : inputData)
 	{
-		std::bitset<BITS_IN_BYTE> bits(static_cast<unsigned char>(byte));
-		for (int i = 7; i >= 0; --i)
+		std::bitset<BITS_IN_BYTE> bits {static_cast<unsigned char>(byte)};
+		for (int i = BITS_IN_BYTE - 1; i >= 0; --i)
 		{
-			m_bitStream.push_back(bits[i]);
+			m_bitStream.push_back(bits[static_cast<size_t>(i)]);
 		}
 	}
 }
@@ -36,7 +36,7 @@ bool BitStreamReader::seek(size_t offset, BitStreamReaderSeekStrategy strategy)
 	}
 	else if (strategy == BitStreamReaderSeekStrategy::END)
 	{
-		m_bitStreamPosition = m_bitStream.size() - offset - 1;
+		m_bitStreamPosition = m_bitStream.size() - 1 - offset;
 	}
 	return true;
 }

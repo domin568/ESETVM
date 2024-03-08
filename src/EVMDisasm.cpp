@@ -8,7 +8,7 @@ void EVMDisasm::init(const std::vector<std::byte>& input)
 {
 	m_bitStreamReader.init(input);
 }
-EVMOpcode EVMDisasm::checkOpcode(uint8_t opcodeSize)
+EVMOpcode EVMDisasm::checkOpcode(size_t opcodeSize)
 {
 	if (const auto readVarResult = m_bitStreamReader.readVar<bitSequenceInteger>(opcodeSize, false, true); readVarResult.has_value())
 	{
@@ -32,7 +32,7 @@ EVMOpcode EVMDisasm::getOpcode()
 	// opcodes are 3-6 bits long, iterate through these sizes
 	// opcodeBitsequences contain mappings for these opcodes but its index start from 0
 
-	for (int opcodeSize = 3; opcodeSize < m_opcodeBitsequences.size() + 3; opcodeSize++)
+	for (size_t opcodeSize = 3; opcodeSize < m_opcodeBitsequences.size() + 3; opcodeSize++)
 	{
 		EVMOpcode opcode = checkOpcode(opcodeSize); 
 		if (opcode != EVMOpcode::UNKNOWN)

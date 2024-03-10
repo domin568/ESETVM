@@ -14,6 +14,7 @@ class ESETVM
 {
 private:
 	static const size_t Register_Count = 16;
+	static const size_t Stack_Size = 10000;
 	static const unsigned int Data_HexDump_Width = 40;
 	std::string m_inputPath;
 	std::string m_outputPath;

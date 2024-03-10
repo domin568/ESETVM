@@ -79,7 +79,7 @@ ESETVMStatus ESETVM::run(const std::string& binaryFile, std::optional<size_t> ma
 		std::copy(initialDataBytes.begin(), initialDataBytes.end(),
 				  reinterpret_cast<std::byte*>(memory.data()));
 	}
-	EVMContext mainThreadContext {Register_Count};
+	EVMContext mainThreadContext {Register_Count, Stack_Size};
 	std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>> mutices {};
 	m_disasm.convertInstructionsToSourceCode(m_instructions, false);
 	

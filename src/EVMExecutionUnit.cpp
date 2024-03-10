@@ -27,10 +27,10 @@ m_mutices(mutices)
 EVMExecutionUnit::~EVMExecutionUnit()
 {
 	{
-		std::unique_lock l {unlockMutex};
-		for (auto& t : m_mutices)
+		std::unique_lock l{ unlockMutex };
+		for (auto& m : m_currentOwnedMutices)
 		{
-			t.second->unlock();
+			m->unlock();
 		}
 	}
 	{
@@ -44,7 +44,7 @@ EVMExecutionUnit::~EVMExecutionUnit()
 		}
 	}
 }
-std::optional<EVMInstruction> EVMExecutionUnit::fetchInstruction()
+std::optional<std::reference_wrapper<const EVMInstruction>> EVMExecutionUnit::fetchInstruction()
 {
 	if (m_threadContext.ip <= m_instructions.size())
 	{
@@ -63,7 +63,7 @@ std::optional<EVMInstruction> EVMExecutionUnit::fetchInstruction()
 			}
 			std::cerr << std::this_thread::get_id() << ": " << srcLine.value() << std::endl;
 		}
-		return m_instructions.at(m_threadContext.ip);
+		return std::cref(m_instructions.at(m_threadContext.ip));
 	}
 	return std::nullopt;
 }
@@ -98,13 +98,20 @@ std::optional<registerIntegerType> EVMExecutionUnit::readIntegerFromAddress(cons
 	{
 		return std::nullopt;
 	}
-	std::vector<uint8_t> tmp {m_memory.begin() + address, m_memory.begin() + address + static_cast<unsigned int>(size)};
-	return utils::convertToInteger<registerIntegerType>(tmp);
+	
+	registerIntegerType result {};
+	for (size_t byteIterator = 0; byteIterator < static_cast<size_t>(size); byteIterator++)
+	{
+		result |= static_cast<registerIntegerType>(m_memory.at(address + byteIterator)) << byteIterator * BITS_IN_BYTE;
+	}
+	return result;
+	//std::vector<uint8_t> tmp {m_memory.begin() + address, m_memory.begin() + address + static_cast<unsigned int>(size)};
+	//return utils::convertToInteger<registerIntegerType>(tmp);
 }
 std::optional<registerIntegerType> EVMExecutionUnit::getDataAccess(const DataAccess& da, const std::vector<registerIntegerType>& registers)
 {
 	registerIntegerType regVal {};
-	regVal = registers[da.registerIndex];
+	regVal = registers.at(da.registerIndex);
 
 	if (da.type == DataAccessType::REGISTER)
 	{
@@ -112,10 +119,12 @@ std::optional<registerIntegerType> EVMExecutionUnit::getDataAccess(const DataAcc
 	}
 	else if (da.type == DataAccessType::DEREFERENCE)
 	{
-		if (const auto dereferenceResult = readIntegerFromAddress(regVal, da.accessSize); dereferenceResult.has_value())
+		const auto dereferenceResult = readIntegerFromAddress(regVal, da.accessSize); 
+		if (!dereferenceResult.has_value())
 		{
-			return dereferenceResult.value();
+			return std::nullopt;
 		}
+		return dereferenceResult.value();
 	}
 	return std::nullopt;
 }
@@ -136,8 +145,10 @@ bool EVMExecutionUnit::saveDataAccess(registerIntegerType val, const DataAccess&
 		{
 			return false;
 		}
-		std::vector<uint8_t> data = utils::convertIntegerToBytes(val, accessSize);
-		std::copy(data.cbegin(), data.cend(), memory.begin() + regVal);
+		//std::vector<uint8_t> data = utils::convertIntegerToBytes(val, accessSize);
+		//std::copy(data.cbegin(), data.cend(), memory.begin() + regVal);
+		uint8_t* valAsBytes = reinterpret_cast<uint8_t*> (&val);
+		std::copy(valAsBytes, valAsBytes + accessSize, memory.begin() + regVal); // to make it as fast as possible
 		return true;
 	}
 	return false;
@@ -353,13 +364,8 @@ bool EVMExecutionUnit::loadConst(const EVMInstruction& instruction)
 }
 bool EVMExecutionUnit::performArithmeticOperation(const EVMInstruction& instruction)
 {
-	// use pointers to make it faster?
-	std::vector<DataAccess> daArgs;
-	std::transform(instruction.arguments.cbegin(), instruction.arguments.cend(), std::back_inserter(daArgs), [](EVMArgument arg){ return arg.data.dataAccess; });
-	
-	//if (daArgs.size() == 3)
 	registerIntegerType arg0 {};
-	const auto arg0Result = getDataAccess(daArgs.at(0), m_threadContext.registers);
+	const auto arg0Result = getDataAccess(instruction.arguments.at(0).data.dataAccess, m_threadContext.registers);
 	if (!arg0Result.has_value())
 	{
 		return false;
@@ -367,7 +373,7 @@ bool EVMExecutionUnit::performArithmeticOperation(const EVMInstruction& instruct
 	arg0 = arg0Result.value();
 			
 	registerIntegerType arg1 {};
-	const auto arg1Result = getDataAccess(daArgs.at(1), m_threadContext.registers);
+	const auto arg1Result = getDataAccess(instruction.arguments.at(1).data.dataAccess, m_threadContext.registers);
 	if (!arg1Result.has_value())
 	{
 		return false;
@@ -396,35 +402,33 @@ bool EVMExecutionUnit::performArithmeticOperation(const EVMInstruction& instruct
 			return false;
 			break;
 	}
-	return saveDataAccess(acc, daArgs.at(2), m_threadContext.registers, m_memory);
+	return saveDataAccess(acc, instruction.arguments.at(2).data.dataAccess, m_threadContext.registers, m_memory);
 }
 bool EVMExecutionUnit::compare (const EVMInstruction& instruction)
 {
-	std::vector<DataAccess> daArgs;
-	std::transform(instruction.arguments.cbegin(), instruction.arguments.cend(), std::back_inserter(daArgs), [](EVMArgument arg){ return arg.data.dataAccess; });
-	const auto arg1Result = getDataAccess(daArgs.at(0), m_threadContext.registers);
-	const auto arg2Result = getDataAccess(daArgs.at(1), m_threadContext.registers);
+	const auto arg1Result = getDataAccess(instruction.arguments.at(0).data.dataAccess, m_threadContext.registers);
+	const auto arg2Result = getDataAccess(instruction.arguments.at(1).data.dataAccess, m_threadContext.registers);
 	if ((!arg1Result.has_value()) || (!arg2Result.has_value()))
 	{
 		return false;
 	}
 	if (arg1Result.value() == arg2Result.value())
 	{
-		if (!saveDataAccess(0, daArgs.at(2), m_threadContext.registers, m_memory))
+		if (!saveDataAccess(0, instruction.arguments.at(2).data.dataAccess, m_threadContext.registers, m_memory))
 		{
 			return false;
 		}
 	}
 	else if (arg1Result.value() < arg2Result.value())
 	{
-		if (!saveDataAccess(-1, daArgs.at(2), m_threadContext.registers, m_memory))
+		if (!saveDataAccess(-1, instruction.arguments.at(2).data.dataAccess, m_threadContext.registers, m_memory))
 		{
 			return false;
 		}
 	}
 	else if (arg1Result.value() > arg2Result.value())
 	{
-		if (!saveDataAccess(1, daArgs.at(2), m_threadContext.registers, m_memory))
+		if (!saveDataAccess(1, instruction.arguments.at(2).data.dataAccess, m_threadContext.registers, m_memory))
 		{
 			return false;
 		}
@@ -437,18 +441,20 @@ std::optional<size_t> EVMExecutionUnit::jump(const EVMInstruction& instruction)
 	const auto insNum = m_disasm.insNumFromCodeOff(codeOffset);
 	if (!insNum.has_value())
 	{
+		std::cerr << "Cannot find instruction to jump to" << std::endl;
 		return std::nullopt;
 	}
 	if (insNum.value() >= m_instructions.size())
 	{
+		std::cerr << "VM tried to jump outside of code scope" << std::endl;
 		return std::nullopt;
 	}
 	return insNum.value();
 }
 std::optional<size_t> EVMExecutionUnit::jumpEqual(const EVMInstruction& instruction)
 {
-	DataAccess daArg1 = instruction.arguments.at(1).data.dataAccess;
-	DataAccess daArg2 = instruction.arguments.at(2).data.dataAccess;
+	const DataAccess& daArg1 = instruction.arguments.at(1).data.dataAccess;
+	const DataAccess& daArg2 = instruction.arguments.at(2).data.dataAccess;
 	const auto arg1Result = getDataAccess(daArg1, m_threadContext.registers);
 	const auto arg2Result = getDataAccess(daArg2, m_threadContext.registers);
 	if ((!arg1Result.has_value()) || (!arg2Result.has_value()))
@@ -467,13 +473,10 @@ std::optional<size_t> EVMExecutionUnit::jumpEqual(const EVMInstruction& instruct
 	return m_threadContext.ip + 1;
 }
 bool EVMExecutionUnit::read (const EVMInstruction& instruction)
-{
-	std::vector<DataAccess> daArgs {};
-	std::transform(instruction.arguments.cbegin(), instruction.arguments.cend(), std::back_inserter(daArgs), [](EVMArgument arg){ return arg.data.dataAccess; });
-	
-	const auto arg1 = getDataAccess(daArgs.at(0), m_threadContext.registers); // offset in input file
-	const auto arg2 = getDataAccess(daArgs.at(1), m_threadContext.registers); // number of bytes to read
-	const auto arg3 = getDataAccess(daArgs.at(2), m_threadContext.registers); // memory address to which read bytes will be stored
+{	
+	const auto arg1 = getDataAccess(instruction.arguments.at(0).data.dataAccess, m_threadContext.registers); // offset in input file
+	const auto arg2 = getDataAccess(instruction.arguments.at(1).data.dataAccess, m_threadContext.registers); // number of bytes to read
+	const auto arg3 = getDataAccess(instruction.arguments.at(2).data.dataAccess, m_threadContext.registers); // memory address to which read bytes will be stored
 	
 	if ((!arg1.has_value()) || (!arg2.has_value()) || (!arg3.has_value()))
 	{
@@ -481,32 +484,36 @@ bool EVMExecutionUnit::read (const EVMInstruction& instruction)
 	}
 	if (m_binaryFilePath.size() == 0)
 	{
+		std::cerr << "Missing binary file" << std::endl;
 		return false;
 	}
 	std::ifstream inputFile {m_binaryFilePath, std::ios::binary};
 	if (!inputFile.is_open())
 	{
-		inputFile.close();
+		std::cerr << "Cannot open input binary file" << std::endl;
 		return false;
 	}
 	inputFile.seekg(arg1.value());
 	if (inputFile.bad())
 	{
+		std::cerr << "VM tried to read from offset beyond file size" << std::endl;
 		inputFile.close();
 		return false;
 	}
-	if (static_cast<size_t>(arg2.value()) >= m_memory.size() - static_cast<size_t>(arg3.value()))
+	if (static_cast<size_t>(arg2.value()) > m_memory.size() - static_cast<size_t>(arg3.value()))
 	{
+		std::cerr << "Out of bounds memory read <read opcode>" << std::endl;
 		inputFile.close();
 		return false;
 	}
 	inputFile.read(reinterpret_cast<char*>(m_memory.data() + arg3.value()), arg2.value());
 	if (inputFile.bad())
 	{
+		std::cerr << "Error while reading input binary file" << std::endl;
 		inputFile.close();
 		return false;
 	}
-	if (!saveDataAccess(inputFile.gcount(), daArgs.at(3), m_threadContext.registers, m_memory))
+	if (!saveDataAccess(inputFile.gcount(), instruction.arguments.at(3).data.dataAccess, m_threadContext.registers, m_memory))
 	{
 		inputFile.close();
 		return false;
@@ -517,12 +524,10 @@ bool EVMExecutionUnit::read (const EVMInstruction& instruction)
 bool EVMExecutionUnit::write (const EVMInstruction& instruction)
 {
 	std::unique_lock l {writeFileMutex};
-	
-	std::vector<DataAccess> daArgs {};
-	std::transform(instruction.arguments.cbegin(), instruction.arguments.cend(), std::back_inserter(daArgs), [](EVMArgument arg){ return arg.data.dataAccess; });
-	const auto arg1 = getDataAccess(daArgs.at(0), m_threadContext.registers); // offset in output file
-	const auto arg2 = getDataAccess(daArgs.at(1), m_threadContext.registers); // number of bytes to write
-	const auto arg3 = getDataAccess(daArgs.at(2), m_threadContext.registers); // memory address from which bytes will be written
+
+	const auto arg1 = getDataAccess(instruction.arguments.at(0).data.dataAccess, m_threadContext.registers); // offset in output file
+	const auto arg2 = getDataAccess(instruction.arguments.at(1).data.dataAccess, m_threadContext.registers); // number of bytes to write
+	const auto arg3 = getDataAccess(instruction.arguments.at(2).data.dataAccess, m_threadContext.registers); // memory address from which bytes will be written
 	
 	if ((!arg1.has_value()) || (!arg2.has_value()) || (!arg3.has_value()))
 	{
@@ -530,28 +535,32 @@ bool EVMExecutionUnit::write (const EVMInstruction& instruction)
 	}
 	if (m_binaryFilePath.size() == 0)
 	{
+		std::cerr << "Missing output binary file" << std::endl;
 		return false;
 	}
 	std::fstream outputFile {m_binaryFilePath, std::ios::binary | std::ios::out | std::ios::in};
 	if (!outputFile.is_open())
 	{
-		outputFile.close();
+		std::cerr << "Cannot open output binary file" << std::endl;
 		return false;
 	}
 	outputFile.seekp(arg1.value(), std::ios::beg); // should write zeros if beyond filesize
 	if (outputFile.bad())
 	{
+		std::cerr << "Error while writing data to binary file" << std::endl;
 		outputFile.close();
 		return false;
 	}
-	if (static_cast<size_t>(arg2.value()) >= m_memory.size() - static_cast<size_t>(arg3.value()))
+	if (static_cast<size_t>(arg2.value()) > m_memory.size() - static_cast<size_t>(arg3.value()))
 	{
+		std::cerr << "Out of bounds memory read <write opcode>" << std::endl;
 		outputFile.close();
 		return false;
 	}
 	outputFile.write(reinterpret_cast<char*>(m_memory.data() + arg3.value()), arg2.value());
 	if (outputFile.bad())
 	{
+		std::cerr << "Error while writing to output binary file" << std::endl;
 		outputFile.close();
 		return false;
 	}
@@ -591,7 +600,7 @@ bool EVMExecutionUnit::createThread(const EVMInstruction& instruction)
 	{
 		return false;
 	}
-	DataAccess da = instruction.arguments.at(1).data.dataAccess;
+	const DataAccess& da = instruction.arguments.at(1).data.dataAccess;
 	
 	std::promise<void> initPromise;
 	std::future<void> initFuture = initPromise.get_future();
@@ -616,7 +625,7 @@ bool EVMExecutionUnit::createThread(const EVMInstruction& instruction)
 bool EVMExecutionUnit::joinThread(const EVMInstruction& instruction)
 {
 	std::unique_lock l {joinMutex};
-	DataAccess da = instruction.arguments.at(0).data.dataAccess;
+	const DataAccess& da = instruction.arguments.at(0).data.dataAccess;
 	const auto threadId = getDataAccess(da, m_threadContext.registers);
 	if (!threadId.has_value())
 	{
@@ -624,11 +633,13 @@ bool EVMExecutionUnit::joinThread(const EVMInstruction& instruction)
 	}
 	if (!m_threads.contains(threadId.value()))
 	{
+		std::cerr << "Could not find handle to thread to join" << std::endl;
 		return false;
 	}
 	std::thread& t = m_threads.at(threadId.value());
 	if (!t.joinable())
 	{
+		std::cerr << "Thread is not joinable" << std::endl;
 		return false;
 	}
 	t.join();
@@ -649,11 +660,17 @@ std::optional<size_t> EVMExecutionUnit::call(const EVMInstruction &instruction)
 {
 	if (m_threadContext.ip + 1 > m_instructions.size())
 	{
+		std::cerr << "There is no next instruction to jump back" << std::endl;
 		return std::nullopt;
 	}
 	const auto jumpResult = jump(instruction);
 	if (!jumpResult.has_value())
 	{
+		return std::nullopt;
+	}
+	if (m_threadContext.callStack.size() > m_threadContext.stackSize)
+	{
+		std::cerr << "Stack overflow" << std::endl;
 		return std::nullopt;
 	}
 	m_threadContext.callStack.push(m_threadContext.ip + 1);
@@ -663,19 +680,21 @@ std::optional<size_t> EVMExecutionUnit::ret()
 {
 	if (m_threadContext.callStack.size() == 0)
 	{
+		std::cerr << "Empty stack" << std::endl;
 		return std::nullopt;
 	}
 	size_t retInsOff = m_threadContext.callStack.top();
 	m_threadContext.callStack.pop();
 	if (retInsOff >= m_instructions.size())
 	{
+		std::cerr << "Ret tried to jump to non-existent instruction" << std::endl;
 		return std::nullopt;
 	}
 	return retInsOff;
 }
 bool EVMExecutionUnit::lock(const EVMInstruction &instruction)
 {
-	DataAccess da = instruction.arguments.at(0).data.dataAccess;
+	const DataAccess& da = instruction.arguments.at(0).data.dataAccess;
 	const auto mutexObj = getDataAccess(da, m_threadContext.registers);
 	if (!mutexObj.has_value())
 	{
@@ -685,21 +704,28 @@ bool EVMExecutionUnit::lock(const EVMInstruction &instruction)
 	if (m_mutices.contains(mutexObj.value()))
 	{
 		auto& mutex = m_mutices.at(mutexObj.value());
+		if (m_currentOwnedMutices.contains(mutex))
+		{
+			std::cerr << "VM tried to lock the same mutex twice" << std::endl;
+			return false;
+		}
 		mutex->lock();
+		m_currentOwnedMutices.insert(mutex);
 	}
 	else
 	{
 		std::unique_lock l {muticesMutex};
-		auto m = std::make_shared<std::mutex>();
-		m->lock();
-		m_mutices.emplace(mutexObj.value(), m);
+		auto mutex = std::make_shared<std::mutex>();
+		mutex->lock();
+		m_mutices.emplace(mutexObj.value(), mutex);
+		m_currentOwnedMutices.insert(mutex);
 	}
 	return true;
 }
 bool EVMExecutionUnit::unlock(const EVMInstruction &instruction)
 {
 	std::unique_lock l {unlockMutex};
-	DataAccess da = instruction.arguments.at(0).data.dataAccess;
+	const DataAccess& da = instruction.arguments.at(0).data.dataAccess;
 	const auto mutexObj = getDataAccess(da, m_threadContext.registers);
 	if (!mutexObj.has_value())
 	{
@@ -707,8 +733,10 @@ bool EVMExecutionUnit::unlock(const EVMInstruction &instruction)
 	}
 	if (!m_mutices.contains(mutexObj.value()))
 	{
+		std::cerr << "Could not find mutex to unlock" << std::endl;
 		return false;
 	}
 	m_mutices.at(mutexObj.value())->unlock();
+	m_currentOwnedMutices.erase(m_mutices.at(mutexObj.value()));
 	return true;
 }

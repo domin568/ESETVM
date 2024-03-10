@@ -4,6 +4,7 @@
 #include "EVMDisasm.h"
 #include "EVMTypes.h"
 #include <chrono>
+#include <functional>
 #include <future>
 #include <iostream>
 #include <inttypes.h>
@@ -44,8 +45,9 @@ private:
 	
 	std::unordered_map<registerIntegerType, std::thread> m_threads {};
 	std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>>& m_mutices;
+	std::set<std::shared_ptr<std::mutex>> m_currentOwnedMutices {};
 	
-	std::optional<EVMInstruction> fetchInstruction();
+	std::optional<std::reference_wrapper<const EVMInstruction>> fetchInstruction();
 	bool executeInstruction(const EVMInstruction& instruction);
 	std::optional<registerIntegerType> readIntegerFromAddress(size_t address, MemoryAccessSize size);
 	std::optional<registerIntegerType> getDataAccess(const DataAccess& da, const std::vector<registerIntegerType>& registers);

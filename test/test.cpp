@@ -386,24 +386,22 @@ bool areInstructionsEqual(const std::vector<EVMInstruction>& vec1, const std::ve
 {
 	if (vec1.size() != vec2.size()) 
 	{
-		return false; // Different sizes, not equal
+		return false;
 	}
 	for (size_t i = 0; i < vec1.size(); ++i) 
 	{
 		if (vec1[i].opcode != vec2[i].opcode) 
 		{
-			return false; // Different opcodes, not equal
+			return false;
 		}
 
 		if (vec1[i].arguments.size() != vec2[i].arguments.size()) 
 		{
-			return false; // Different argument vector sizes, not equal
+			return false;
 		}
 
-		// Compare each argument
 		for (size_t j = 0; j < vec1[i].arguments.size(); ++j) 
 		{
-			// Assuming you have appropriate comparison logic for your union and structs
 			if (vec1[i].arguments[j].type != vec2[i].arguments[j].type)
 			{
 				return false;
@@ -436,7 +434,7 @@ bool areInstructionsEqual(const std::vector<EVMInstruction>& vec1, const std::ve
 			}
 		}
 	}
-	return true; // All elements are equal
+	return true;
 }
 
 void initializeCrcInstructionsTest()

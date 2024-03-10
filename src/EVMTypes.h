@@ -95,8 +95,16 @@ enum class ESETVMStatus
 };
 struct EVMContext
 {
+	const size_t stackSize;
 	std::vector<int64_t> registers;
 	size_t ip;
 	std::stack<size_t> callStack;
-	EVMContext(size_t registerCount): registers{}, ip{0}, callStack{}{ registers.resize(registerCount); }
+	EVMContext(size_t registerCount, size_t maxStackSize): 
+	registers{},
+	ip{0},
+	callStack{},
+	stackSize{maxStackSize}
+	{
+		registers.resize(registerCount); 
+	}
 };

@@ -96,6 +96,7 @@ std::optional<registerIntegerType> EVMExecutionUnit::readIntegerFromAddress(cons
 {
 	if (address >= m_memory.size())
 	{
+		std::cerr << "VM tries to read out of memory bounds" << std::endl;
 		return std::nullopt;
 	}
 	
@@ -105,8 +106,6 @@ std::optional<registerIntegerType> EVMExecutionUnit::readIntegerFromAddress(cons
 		result |= static_cast<registerIntegerType>(m_memory.at(address + byteIterator)) << byteIterator * BITS_IN_BYTE;
 	}
 	return result;
-	//std::vector<uint8_t> tmp {m_memory.begin() + address, m_memory.begin() + address + static_cast<unsigned int>(size)};
-	//return utils::convertToInteger<registerIntegerType>(tmp);
 }
 std::optional<registerIntegerType> EVMExecutionUnit::getDataAccess(const DataAccess& da, const std::vector<registerIntegerType>& registers)
 {
@@ -143,10 +142,9 @@ bool EVMExecutionUnit::saveDataAccess(registerIntegerType val, const DataAccess&
 		size_t accessSize = static_cast<size_t>(da.accessSize);
 		if (static_cast<size_t>(regVal) > memory.size() - accessSize)
 		{
+			std::cerr << "VM tries to write out of memory bounds" << std::endl;
 			return false;
 		}
-		//std::vector<uint8_t> data = utils::convertIntegerToBytes(val, accessSize);
-		//std::copy(data.cbegin(), data.cend(), memory.begin() + regVal);
 		uint8_t* valAsBytes = reinterpret_cast<uint8_t*> (&val);
 		std::copy(valAsBytes, valAsBytes + accessSize, memory.begin() + regVal); // to make it as fast as possible
 		return true;

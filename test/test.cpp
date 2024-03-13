@@ -478,32 +478,21 @@ TEST(DisassembleTest, ParsingInstruction)
 	EVMDisasm disasm(crcCodeTest);
 
 	initializeCrcInstructionsTest();
-	std::vector<EVMInstruction> instructions;
-    const auto parsingInstruction = disasm.parseInstructions();
-    if (parsingInstruction.has_value())
-    {
-        instructions = parsingInstruction.value();
-    }
-	EXPECT_TRUE(parsingInstruction.has_value());
-	EXPECT_TRUE(instructions.size() > 0);
-	EXPECT_TRUE(areInstructionsEqual(instructions, crcInstructionsTest));
+    EXPECT_TRUE(disasm.parseInstructions());
+	EXPECT_TRUE(disasm.getInstructions().size() > 0);
+	EXPECT_TRUE(areInstructionsEqual(disasm.getInstructions(), crcInstructionsTest));
 
 	std::vector<std::string> sourceCodeLines{};
-    const auto sourceCodeTransform = disasm.convertInstructionsToSourceCode(instructions);
-    if (sourceCodeTransform.has_value())
-    {
-        sourceCodeLines = sourceCodeTransform.value();
-    }
-	EXPECT_TRUE(sourceCodeTransform.has_value());
+	EXPECT_TRUE(disasm.convertInstructionsToSourceCode());
 }
 
 TEST(BitStreamReaderTest, CrcTest)
 {
 	BitStreamReader bitStreamReader (crcCodeTest);
-	std::vector<bool> bitStream;
-	const auto bitStreamResult = bitStreamReader.readBits(crcCodeTest.size() * BITS_IN_BYTE, false);
-	EXPECT_TRUE(bitStreamResult.has_value());
-	bitStream = bitStreamResult.value();
+	
+	const auto bitStreamEndIt = bitStreamReader.readBits(crcCodeTest.size() * BITS_IN_BYTE, false);
+	EXPECT_TRUE(bitStreamEndIt.has_value());
+	std::vector<bool> bitStream{ bitStreamEndIt.value() - crcCodeTest.size() * BITS_IN_BYTE, bitStreamEndIt.value()};
 	std::string bitStreamString {};
 	for (const auto& bit : bitStream)
 	{
@@ -515,22 +504,11 @@ TEST(DisassembleTest, InstructionParsingCrcTest)
 {
 	EVMDisasm disasm(crcCodeFull);
 	EXPECT_EQ(disasm.getError(), ESETVMStatus::SUCCESS);
-	std::vector<EVMInstruction> instructions;
-    const auto instructionParsing = disasm.parseInstructions();
-    if (instructionParsing.has_value())
-    {
-		instructions = instructionParsing.value();
-    }
-	EXPECT_TRUE(instructionParsing.has_value());
-	EXPECT_TRUE(instructions.size() > 0);
-	std::vector<std::string> sourceCodeLines{};
-    const auto sourceCodeTransform = disasm.convertInstructionsToSourceCode(instructions);
-    if (sourceCodeTransform.has_value())
-    {
-        sourceCodeLines = sourceCodeTransform.value();
-    }
-	EXPECT_TRUE(sourceCodeTransform.has_value());
-	EXPECT_TRUE(std::equal(sourceCodeLines.begin(), sourceCodeLines.end(), crcDisasmFull.begin(), crcDisasmFull.end()));
+	EXPECT_TRUE(disasm.parseInstructions());
+	EXPECT_TRUE(disasm.getInstructions().size() > 0);
+    EXPECT_TRUE(disasm.convertInstructionsToSourceCode());
+
+	EXPECT_TRUE(std::equal(disasm.getSourceCode().begin(), disasm.getSourceCode().end(), crcDisasmFull.begin(), crcDisasmFull.end()));
 }
 TEST(CliTest, CliArguments)
 {

@@ -16,18 +16,14 @@ ESETVMStatus ESETVM::init()
 	}
 	std::vector<std::byte> codeBytes = m_file.getCodeBytes();
 	m_disasm.init(codeBytes);
-	if (const auto instructionParse = m_disasm.parseInstructions(); instructionParse.has_value())
-	{
-		m_instructions = instructionParse.value();
-	}
-	else
+	if (!m_disasm.parseInstructions())
 	{
 		std::cerr << "Instruction parsing error" << std::endl;
 		return m_disasm.getError();
 	}
 	return ESETVMStatus::SUCCESS;
 }
-bool ESETVM::writeSourceCode(std::vector<std::string>& sourceCodeLines)
+bool ESETVM::writeSourceCode()
 {
 	std::ofstream outputFile(m_outputPath);
 	outputFile << ".dataSize " << m_file.getDataSize() << std::endl;
@@ -39,7 +35,7 @@ bool ESETVM::writeSourceCode(std::vector<std::string>& sourceCodeLines)
 		outputFile << std::endl << std::endl;
 	}
 	outputFile << ".code" << std::endl << std::endl;
-	for (const auto& line : sourceCodeLines)
+	for (const auto& line : m_disasm.getSourceCodeLines())
 	{
 		outputFile << line << std::endl;
 	}
@@ -53,16 +49,12 @@ bool ESETVM::writeSourceCode(std::vector<std::string>& sourceCodeLines)
 ESETVMStatus ESETVM::saveSourceCode()
 {
 	std::vector<std::string> sourceCodeLines{};
-	if (const auto sourceCodeConvert = m_disasm.convertInstructionsToSourceCode(m_instructions); sourceCodeConvert.has_value())
-	{
-		sourceCodeLines = sourceCodeConvert.value();
-	}
-	else
+	if (!m_disasm.convertInstructionsToSourceCode())
 	{
 		std::cerr << "Source code produce error" << std::endl;
 		return ESETVMStatus::PRODUCE_SOURCE_CODE_ERROR;
-	}
-	if (!writeSourceCode(sourceCodeLines))
+	}	
+	if (!writeSourceCode())
 	{
 		std::cerr << "Source code writing error" << std::endl;
 		return ESETVMStatus::SOURCE_CODE_WRITE_ERROR;
@@ -81,10 +73,10 @@ ESETVMStatus ESETVM::run(const std::string& binaryFile, std::optional<size_t> ma
 	}
 	EVMContext mainThreadContext {Register_Count, Stack_Size};
 	std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>> mutices {};
-	m_disasm.convertInstructionsToSourceCode(m_instructions, false);
+	m_disasm.convertInstructionsToSourceCode(false);
 	
 	std::atomic<size_t> instructionCounter {};
-	EVMExecutionUnit mainThread {m_instructions, memory, m_disasm, mainThreadContext, mutices, binaryFile, m_verbose, maxEmulatedInstructionCount, instructionCounter};
+	EVMExecutionUnit mainThread {m_disasm.getInstructions(), memory, m_disasm, mainThreadContext, mutices, binaryFile, m_verbose, maxEmulatedInstructionCount, instructionCounter};
 	ESETVMStatus status = mainThread.run();
 	return status;
 }

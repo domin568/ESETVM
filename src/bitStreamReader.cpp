@@ -6,14 +6,17 @@ BitStreamReader::BitStreamReader(const std::vector<std::byte>& inputData)
 }
 void BitStreamReader::init(const std::vector<std::byte>& inputData)
 {
-	m_bitStream.reserve(inputData.size() * BITS_IN_BYTE);
+	m_bitStream.resize(inputData.size() * BITS_IN_BYTE);
+	size_t byteIter = 0;
 	for (const auto& byte : inputData)
 	{
-		for (int i = BITS_IN_BYTE - 1; i >= 0; --i)
+		for (size_t i = 0; i < BITS_IN_BYTE; i++)
 		{
-			bool bit = static_cast<uint8_t>(byte) & (1 << i);
-			m_bitStream.push_back(bit);
+			size_t bitMask = BITS_IN_BYTE - i - 1;
+			bool bit = static_cast<uint8_t>(byte) & (1 << bitMask);
+			m_bitStream[byteIter * BITS_IN_BYTE + i] = bit;
 		}
+		byteIter++;
 	}
 }
 bool BitStreamReader::seek(size_t offset, BitStreamReaderSeekStrategy strategy)

@@ -45,7 +45,6 @@ private:
 		}
 		return var;
 	}
-	
 public:
 	BitStreamReader() = default;
 	BitStreamReader(const std::vector<std::byte>& inputData);
@@ -61,16 +60,17 @@ public:
 		std::vector<bool> bits;
 		size_t bitsToRead = overrideCountBytes == 0 ? sizeof(T) * BITS_IN_BYTE : overrideCountBytes;
 
-		if (const auto readBitsResult = readBits(bitsToRead, movePointer); readBitsResult.has_value())
+		const auto readBitsResult = readBits(bitsToRead, movePointer);
+		if (!readBitsResult.has_value())
 		{
-			auto endIt = readBitsResult.value();
-			if (const auto varResult = bitStreamToVar<T>(endIt - bitsToRead, endIt, bigEndian); varResult.has_value())
-			{
-				return varResult.value();
-			}
+			return std::nullopt;
 		}
-		
-		return std::nullopt;
+		const auto& endIt = readBitsResult.value();
+		const auto varResult = bitStreamToVar<T>(endIt - bitsToRead, endIt, bigEndian);
+		if (!varResult.has_value())
+		{
+			return std::nullopt;
+		}
+		return varResult.value();
 	}
-	
 };

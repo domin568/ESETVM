@@ -49,7 +49,7 @@ bool CLIArgParser::parseArguments ()
 	}
 	else if (m_cliFlags.disassemble && (m_inputPath.empty() || m_outputPath.empty()))
 	{
-		std::cerr << "If you want to dissasemble .evm file please provide -i <file.evm> -o <file.easm>" << std::endl;
+		std::cerr << "If you want to dissasemble .evm file please provide <file.evm> <output.easm>" << std::endl;
 		return false;
 	}
 	else if (m_cliFlags.run && m_inputPath.empty())

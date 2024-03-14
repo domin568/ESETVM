@@ -2,6 +2,7 @@
 
 #include "EVMTypes.h"
 #include "utils.h"
+#include <cstring>
 #include <fstream>
 #include <inttypes.h>
 #include <vector>

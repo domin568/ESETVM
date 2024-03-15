@@ -13,15 +13,13 @@ FetchContent_MakeAvailable(googletest)
 add_library(GTest::GTest INTERFACE IMPORTED)
 target_link_libraries(GTest::GTest INTERFACE gtest_main)
 
-# Link the library produced by EsetVM
 find_library(EsetVMLibrary EsetVM)
-
 add_executable(esetvm_test test.cpp)
 
 target_link_libraries(esetvm_test
  PRIVATE
   GTest::GTest
-  EsetVMLibrary  # Link to the library produced by EsetVM
+  EsetVMLibrary
 )
 
 add_test(esetvm_gtests esetvm_test)

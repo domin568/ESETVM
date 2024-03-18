@@ -41,7 +41,7 @@ private:
 	const std::vector<EVMInstruction>& m_instructions;
 	std::vector<uint8_t>& m_memory;
 	const EVMDisasm& m_disasm;
-	const std::string& m_binaryFilePath {};
+	std::fstream& m_binaryFile;
 	
 	std::unordered_map<registerIntegerType, std::thread> m_threads {};
 	std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>>& m_mutices;
@@ -73,7 +73,7 @@ private:
 	bool unlock (const EVMInstruction& instruction);
 	
 public:
-	EVMExecutionUnit(const std::vector<EVMInstruction>& instructions, std::vector<uint8_t>& memory, const EVMDisasm& disasm, EVMContext context, std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>>& mutices, const std::string& binaryFile, bool verbose, std::optional<size_t> maxEmulatedInstructionCount, std::atomic<size_t>& emulatedInstructionCount);
+	EVMExecutionUnit(const std::vector<EVMInstruction>& instructions, std::vector<uint8_t>& memory, const EVMDisasm& disasm, EVMContext context, std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>>& mutices, std::fstream& binaryFile, bool verbose, std::optional<size_t> maxEmulatedInstructionCount, std::atomic<size_t>& emulatedInstructionCount);
 	~EVMExecutionUnit();
 	ESETVMStatus run();
 };

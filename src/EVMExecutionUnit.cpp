@@ -10,7 +10,7 @@ std::mutex EVMExecutionUnit::muticesMutex;
 std::mutex EVMExecutionUnit::interruptMutex;
 std::atomic<bool> EVMExecutionUnit::interrupt = false;
 
-EVMExecutionUnit::EVMExecutionUnit(const std::vector<EVMInstruction>& instructions, std::vector<uint8_t>& memory, const EVMDisasm& disasm, EVMContext context, std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>>& mutices, const std::string& binaryFile, bool verbose, std::optional<size_t> maxEmulatedInstructionCount, std::atomic<size_t>& emulatedInstructionCount):
+EVMExecutionUnit::EVMExecutionUnit(const std::vector<EVMInstruction>& instructions, std::vector<uint8_t>& memory, const EVMDisasm& disasm, EVMContext context, std::unordered_map<registerIntegerType, std::shared_ptr<std::mutex>>& mutices, std::fstream& binaryFile, bool verbose, std::optional<size_t> maxEmulatedInstructionCount, std::atomic<size_t>& emulatedInstructionCount):
 m_maxEmulatedInstructionCount(maxEmulatedInstructionCount),
 m_emulatedInstructionCount(emulatedInstructionCount),
 m_threadContext(context),
@@ -19,7 +19,7 @@ m_verbose(verbose),
 m_instructions(instructions),
 m_memory(memory),
 m_disasm(disasm),
-m_binaryFilePath(binaryFile),
+m_binaryFile(binaryFile),
 m_mutices(mutices)
 {
 	m_threadContext.registers.resize(16);
@@ -480,43 +480,36 @@ bool EVMExecutionUnit::read (const EVMInstruction& instruction)
 	{
 		return false;
 	}
-	if (m_binaryFilePath.size() == 0)
-	{
-		std::cerr << "Missing binary file" << std::endl;
-		return false;
-	}
-	std::ifstream inputFile {m_binaryFilePath, std::ios::binary};
-	if (!inputFile.is_open())
+	if (!m_binaryFile.is_open())
 	{
 		std::cerr << "Cannot open input binary file" << std::endl;
 		return false;
 	}
-	inputFile.seekg(arg1.value());
-	if (inputFile.bad())
+	m_binaryFile.seekg(arg1.value());
+	if (m_binaryFile.bad())
 	{
 		std::cerr << "VM tried to read from offset beyond file size" << std::endl;
-		inputFile.close();
+		m_binaryFile.close();
 		return false;
 	}
 	if (static_cast<size_t>(arg2.value()) > m_memory.size() - static_cast<size_t>(arg3.value()))
 	{
 		std::cerr << "Out of bounds memory read <read opcode>" << std::endl;
-		inputFile.close();
+		m_binaryFile.close();
 		return false;
 	}
-	inputFile.read(reinterpret_cast<char*>(m_memory.data() + arg3.value()), arg2.value());
-	if (inputFile.bad())
+	m_binaryFile.read(reinterpret_cast<char*>(m_memory.data() + arg3.value()), arg2.value());
+	if (m_binaryFile.bad())
 	{
 		std::cerr << "Error while reading input binary file" << std::endl;
-		inputFile.close();
+		m_binaryFile.close();
 		return false;
 	}
-	if (!saveDataAccess(inputFile.gcount(), instruction.arguments.at(3).data.dataAccess, m_threadContext.registers, m_memory))
+	if (!saveDataAccess(m_binaryFile.gcount(), instruction.arguments.at(3).data.dataAccess, m_threadContext.registers, m_memory))
 	{
-		inputFile.close();
+		m_binaryFile.close();
 		return false;
 	}
-	inputFile.close();
 	return true;
 }
 bool EVMExecutionUnit::write (const EVMInstruction& instruction)
@@ -531,35 +524,29 @@ bool EVMExecutionUnit::write (const EVMInstruction& instruction)
 	{
 		return false;
 	}
-	if (m_binaryFilePath.size() == 0)
-	{
-		std::cerr << "Missing output binary file" << std::endl;
-		return false;
-	}
-	std::fstream outputFile {m_binaryFilePath, std::ios::binary | std::ios::out | std::ios::in};
-	if (!outputFile.is_open())
+	if (!m_binaryFile.is_open())
 	{
 		std::cerr << "Cannot open output binary file" << std::endl;
 		return false;
 	}
-	outputFile.seekp(arg1.value(), std::ios::beg); // should write zeros if beyond filesize
-	if (outputFile.bad())
+	m_binaryFile.seekp(arg1.value(), std::ios::beg); // should write zeros if beyond filesize
+	if (m_binaryFile.bad())
 	{
 		std::cerr << "Error while writing data to binary file" << std::endl;
-		outputFile.close();
+		m_binaryFile.close();
 		return false;
 	}
 	if (static_cast<size_t>(arg2.value()) > m_memory.size() - static_cast<size_t>(arg3.value()))
 	{
 		std::cerr << "Out of bounds memory read <write opcode>" << std::endl;
-		outputFile.close();
+		m_binaryFile.close();
 		return false;
 	}
-	outputFile.write(reinterpret_cast<char*>(m_memory.data() + arg3.value()), arg2.value());
-	if (outputFile.bad())
+	m_binaryFile.write(reinterpret_cast<char*>(m_memory.data() + arg3.value()), arg2.value());
+	if (m_binaryFile.bad())
 	{
 		std::cerr << "Error while writing to output binary file" << std::endl;
-		outputFile.close();
+		m_binaryFile.close();
 		return false;
 	}
 	return true;
@@ -607,7 +594,7 @@ bool EVMExecutionUnit::createThread(const EVMInstruction& instruction)
 	{
 		EVMContext newContext {m_threadContext};
 		newContext.ip = insNum.value();
-		EVMExecutionUnit executionUnit {m_instructions, m_memory, m_disasm, newContext, m_mutices, m_binaryFilePath, m_verbose, m_maxEmulatedInstructionCount, m_emulatedInstructionCount};
+		EVMExecutionUnit executionUnit {m_instructions, m_memory, m_disasm, newContext, m_mutices, m_binaryFile, m_verbose, m_maxEmulatedInstructionCount, m_emulatedInstructionCount};
 		initPromise.set_value();
 		executionUnit.run();
 	});

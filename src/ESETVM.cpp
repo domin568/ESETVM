@@ -76,7 +76,10 @@ ESETVMStatus ESETVM::run(const std::string& binaryFile, std::optional<size_t> ma
 	m_disasm.convertInstructionsToSourceCode(false);
 	
 	std::atomic<size_t> instructionCounter {};
-	EVMExecutionUnit mainThread {m_disasm.getInstructions(), memory, m_disasm, mainThreadContext, mutices, binaryFile, m_verbose, maxEmulatedInstructionCount, instructionCounter};
+	std::fstream fileHandle {binaryFile, std::ios::binary | std::ios::out | std::ios::in};
+	EVMExecutionUnit mainThread {m_disasm.getInstructions(), memory, m_disasm, mainThreadContext, mutices, fileHandle, m_verbose, maxEmulatedInstructionCount, instructionCounter};
 	ESETVMStatus status = mainThread.run();
+	
+	fileHandle.close();
 	return status;
 }
